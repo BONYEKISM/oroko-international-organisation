@@ -19,14 +19,14 @@ export function AboutSection() {
                   &ldquo;
                 </div>
                 <blockquote className="font-heading text-white text-xl lg:text-2xl leading-relaxed italic font-light">
-                  An organization built on the pillars of unity, development,
-                  and service — connecting individuals who share a commitment
+                  This organization is built on the pillars of unity, development,
+                  transparency and service — connecting individuals who share a commitment
                   to collective progress.
                 </blockquote>
                 <div className="mt-8 flex items-center gap-3">
                   <span className="h-px w-8 bg-oroko-gold" />
                   <span className="text-oroko-gold text-xs tracking-[0.2em] uppercase">
-                    OROKO Charter
+                    Sam MBENDE
                   </span>
                 </div>
               </div>
@@ -74,7 +74,7 @@ export function AboutSection() {
               OROKO International Organization is a membership-driven body
               bringing together individuals from across the globe under the
               values of unity, excellence, and service. We are committed to
-              the growth and empowerment of every member.
+              the growth and empowerment of our members and the development of Orokoland.
             </p>
 
             <p className="text-muted-foreground leading-relaxed">
