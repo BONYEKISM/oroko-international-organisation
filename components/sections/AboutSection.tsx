@@ -61,7 +61,7 @@ export function AboutSection() {
             <div className="flex items-center gap-3">
               <span className="h-px w-8 bg-oroko-gold" />
               <span className="text-oroko-gold text-xs tracking-[0.3em] uppercase font-medium">
-                About the Organization
+                About Oroko International
               </span>
             </div>
 
