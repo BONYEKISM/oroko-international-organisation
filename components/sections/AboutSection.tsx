@@ -37,7 +37,7 @@ export function AboutSection() {
             {/* Stat chips */}
             <div className="flex gap-4 mt-8">
               {[
-                { n: "60+", label: "Members" },
+                { n: "100+", label: "Members" },
                 { n: "15+", label: "Countries" },
                 { n: "1+", label: "Years" },
               ].map(({ n, label }) => (
