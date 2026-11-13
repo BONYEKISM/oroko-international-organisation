@@ -19,7 +19,7 @@ export function AboutSection() {
                   &ldquo;
                 </div>
                 <blockquote className="font-heading text-white text-xl lg:text-2xl leading-relaxed italic font-light">
-                  This organization is built on the pillars of unity, development,
+                  Our organization is built on the pillars of unity, development,
                   transparency and service — connecting individuals who share a commitment
                   to collective progress.
                 </blockquote>
