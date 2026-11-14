@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
@@ -9,11 +9,25 @@ import { ArrowRight, ChevronDown, Heart } from "lucide-react";
 gsap.registerPlugin();
 
 export function HeroSection() {
+  const [shouldPlayMobileVideo, setShouldPlayMobileVideo] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLDivElement>(null);
   const taglineRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(
+      "(max-width: 767px) and (prefers-reduced-motion: no-preference)"
+    );
+    const updateVideoPlayback = () =>
+      setShouldPlayMobileVideo(mediaQuery.matches);
+
+    updateVideoPlayback();
+    mediaQuery.addEventListener("change", updateVideoPlayback);
+
+    return () => mediaQuery.removeEventListener("change", updateVideoPlayback);
+  }, []);
 
   useGSAP(
     () => {
@@ -58,6 +72,30 @@ export function HeroSection() {
       ref={heroRef}
       className="relative min-h-screen flex flex-col justify-center bg-oroko-black overflow-hidden oroko-pattern"
     >
+      {shouldPlayMobileVideo && (
+        <>
+          <video
+            aria-hidden="true"
+            autoPlay
+            className="absolute inset-0 size-full object-cover"
+            loop
+            muted
+            playsInline
+            preload="none"
+            tabIndex={-1}
+          >
+            <source
+              src="https://res.cloudinary.com/dkd3k6eau/video/upload/v1794652440/WhatsApp_Video_2026-11-14_at_11.32.53_esgier.mp4"
+              type="video/mp4"
+            />
+          </video>
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-oroko-black/55"
+          />
+        </>
+      )}
+
       {/* Radial glow — deep green accent */}
       <div
         aria-hidden="true"
