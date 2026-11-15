@@ -6,6 +6,7 @@ export interface IOrgSettings extends Document {
   contactEmail?: string;
   contactPhone?: string;
   address?: string;
+  executiveCouncilPresidentMessage?: string;
   notifyOnNewApplication: boolean;
   notifyOnNewDonation: boolean;
   notifyOnWelfareRequest: boolean;
@@ -20,6 +21,7 @@ const OrgSettingsSchema = new Schema<IOrgSettings>(
     contactEmail: { type: String, trim: true },
     contactPhone: { type: String, trim: true },
     address: { type: String, trim: true },
+    executiveCouncilPresidentMessage: { type: String, trim: true, maxlength: 1000 },
     notifyOnNewApplication: { type: Boolean, default: true },
     notifyOnNewDonation: { type: Boolean, default: true },
     notifyOnWelfareRequest: { type: Boolean, default: true },

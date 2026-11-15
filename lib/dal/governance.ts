@@ -7,8 +7,11 @@ import Committee from "@/models/Committee";
 import CommitteeMember from "@/models/CommitteeMember";
 import GovernanceMeeting, { type IGovernanceMeeting, type GovernanceOrgan } from "@/models/GovernanceMeeting";
 import GovernanceDocument, { type IGovernanceDocument } from "@/models/GovernanceDocument";
-import User from "@/models/User";
+import OrgSettings from "@/models/OrgSettings";
 import { Types } from "mongoose";
+import type { IGovernanceRole } from "@/models/GovernanceRole";
+import type { IExecutiveMember } from "@/models/ExecutiveMember";
+import type { IUser } from "@/models/User";
 
 // ─── Serialized types (plain objects for Server→Client passing) ─────────────
 
@@ -17,12 +20,34 @@ export type OfficerProfile = {
   userId: string;
   userName: string;
   userPhoto?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  linkedIn?: string;
   roleName: string;
   roleDescription?: string;
   responsibilities: string[];
-  term: string;
+  term?: string;
+  startDate?: string;
+  endDate?: string;
   bio?: string;
   order: number;
+};
+
+export type ExecutivePosition = {
+  id: string;
+  roleName: string;
+  description?: string;
+  responsibilities: string[];
+  order: number;
+  isPresident: boolean;
+  officer?: OfficerProfile;
+  hasUnpublishedOfficer: boolean;
+};
+
+export type ExecutiveCouncil = {
+  positions: ExecutivePosition[];
+  presidentMessage?: string;
 };
 
 export type CommitteeSummary = {
@@ -76,36 +101,138 @@ export type DocumentSummary = {
   isPublic: boolean;
 };
 
+function publicHttpsUrl(value?: string) {
+  return value?.startsWith("https://") ? value : undefined;
+}
+
 // ─── Queries ────────────────────────────────────────────────────────────────
 
-export const getExecutiveOfficers = cache(async (): Promise<OfficerProfile[]> => {
-  await connectDB();
+const DEFAULT_EXECUTIVE_POSITIONS = [
+  { key: "interim-president", name: "PRESIDENT" },
+  { key: "interim-vice-president", name: "VICE PRESIDENT" },
+  { key: "interim-secretary-general", name: "SECRETARY GENERAL" },
+  { key: "interim-vice-secretary-general", name: "VICE SECRETARY GENERAL" },
+  { key: "interim-treasurer", name: "TREASURER" },
+  { key: "interim-financial-secretary", name: "FINANCIAL SECRETARY" },
+  { key: "interim-publicity-communications-secretary", name: "PUBLICITY & COMMUNICATIONS SECRETARY" },
+  { key: "interim-cultural-secretary", name: "CULTURAL SECRETARY" },
+  { key: "interim-chief-whip", name: "CHIEF WHIP" },
+] as const;
 
-  const members = await ExecutiveMember.find({ isActive: true })
-    .populate("user", "firstName lastName profilePhoto")
-    .populate("role", "name description responsibilities order")
-    .sort({ "role.order": 1 })
+export async function ensureDefaultExecutivePositions() {
+  const existing = await GovernanceRole.find({ organ: "executive" })
+    .select("name systemKey isPresident")
     .lean();
+  for (const [order, position] of DEFAULT_EXECUTIVE_POSITIONS.entries()) {
+    const existingRole = existing.find((role) => role.systemKey === position.key)
+      ?? existing.find((role) => role.name.trim().toLocaleUpperCase() === position.name);
+    if (existingRole) {
+      if (!existingRole.systemKey) {
+        await GovernanceRole.updateOne(
+          { _id: existingRole._id, systemKey: { $exists: false } },
+          { $set: { systemKey: position.key } }
+        );
+      }
+      if (position.key === "interim-president" && existingRole.isPresident === undefined) {
+        await GovernanceRole.updateOne(
+          { _id: existingRole._id, isPresident: { $exists: false } },
+          { $set: { isPresident: true } }
+        );
+      }
+      continue;
+    }
 
-  return members
-    .filter((m) => m.user && m.role)
-    .map((m) => {
-      const user = m.user as unknown as { _id: Types.ObjectId; firstName: string; lastName: string; profilePhoto?: string };
-      const role = m.role as unknown as { _id: Types.ObjectId; name: string; description?: string; responsibilities?: string[]; order: number };
-      return {
-        id: (m._id as Types.ObjectId).toString(),
+    await GovernanceRole.create({
+      name: position.name,
+      systemKey: position.key,
+      organ: "executive",
+      order,
+      isActive: true,
+      isPresident: position.key === "interim-president",
+    });
+  }
+}
+
+export const getExecutiveCouncil = cache(async (): Promise<ExecutiveCouncil> => {
+  await connectDB();
+  await ensureDefaultExecutivePositions();
+
+  const [roles, members, settings] = await Promise.all([
+    GovernanceRole.find({ organ: "executive", isActive: true })
+      .sort({ order: 1, name: 1 })
+      .lean<IGovernanceRole[]>(),
+    ExecutiveMember.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .populate<{ user: IUser & { _id: Types.ObjectId } }>(
+        "user",
+        "firstName lastName email phone profilePhoto website linkedIn privacySettings"
+      )
+      .populate<{ role: IGovernanceRole & { _id: Types.ObjectId } }>(
+        "role",
+        "name description responsibilities order isPresident"
+      )
+      .lean<(IExecutiveMember & { user: IUser & { _id: Types.ObjectId }; role: IGovernanceRole & { _id: Types.ObjectId } })[]>(),
+    OrgSettings.findOne({}).select("executiveCouncilPresidentMessage").lean(),
+  ]);
+
+  const currentMembers = new Map<string, (typeof members)[number]>();
+  for (const member of members) {
+    if (member.user && member.role) {
+      const roleId = member.role._id.toString();
+      if (!currentMembers.has(roleId)) currentMembers.set(roleId, member);
+    }
+  }
+
+  const positions = roles.map((role) => {
+    const roleId = (role._id as Types.ObjectId).toString();
+    const member = currentMembers.get(roleId);
+    const published = member && member.isPublished !== false;
+    let officer: OfficerProfile | undefined;
+
+    if (member && published) {
+      const user = member.user;
+      const privacySettings = user.privacySettings;
+      officer = {
+        id: (member._id as Types.ObjectId).toString(),
         userId: user._id.toString(),
         userName: `${user.firstName} ${user.lastName}`,
-        userPhoto: user.profilePhoto,
+        userPhoto: member.photoUrl || user.profilePhoto,
+        email: privacySettings?.showEmail ? user.email : undefined,
+        phone: privacySettings?.showPhone ? user.phone : undefined,
+        website: privacySettings?.isDirectoryVisible ? publicHttpsUrl(user.website) : undefined,
+        linkedIn: privacySettings?.isDirectoryVisible ? publicHttpsUrl(user.linkedIn) : undefined,
         roleName: role.name,
         roleDescription: role.description,
         responsibilities: role.responsibilities ?? [],
-        term: m.term,
-        bio: m.bio,
+        term: member.term,
+        startDate: member.startDate?.toISOString(),
+        endDate: member.endDate?.toISOString(),
+        bio: member.bio,
         order: role.order,
       };
-    })
-    .sort((a, b) => a.order - b.order);
+    }
+
+    return {
+      id: roleId,
+      roleName: role.name,
+      description: role.description,
+      responsibilities: role.responsibilities ?? [],
+      order: role.order,
+      isPresident: role.isPresident ?? false,
+      officer,
+      hasUnpublishedOfficer: Boolean(member && !published),
+    };
+  });
+
+  return {
+    positions,
+    presidentMessage: settings?.executiveCouncilPresidentMessage,
+  };
+});
+
+export const getExecutiveOfficers = cache(async (): Promise<OfficerProfile[]> => {
+  const { positions } = await getExecutiveCouncil();
+  return positions.flatMap((position) => position.officer ? [position.officer] : []);
 });
 
 export const getCommittees = cache(async (): Promise<CommitteeSummary[]> => {

@@ -2,12 +2,14 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IGovernanceRole extends Document {
   name: string;
+  systemKey?: string;
   organ: "executive" | "general_assembly" | "committee";
   description?: string;
   responsibilities: string[];
   permissions: string[];
   order: number;
   isActive: boolean;
+  isPresident: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +17,7 @@ export interface IGovernanceRole extends Document {
 const GovernanceRoleSchema = new Schema<IGovernanceRole>(
   {
     name: { type: String, required: true, trim: true },
+    systemKey: { type: String, trim: true, unique: true, sparse: true },
     organ: {
       type: String,
       enum: ["executive", "general_assembly", "committee"],
@@ -25,6 +28,7 @@ const GovernanceRoleSchema = new Schema<IGovernanceRole>(
     permissions: [{ type: String, trim: true }],
     order: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
+    isPresident: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

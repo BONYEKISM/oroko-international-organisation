@@ -8,9 +8,11 @@ export function ToggleLeadershipButton({ id, isActive }: { id: string; isActive:
   const router = useRouter();
   return (
     <ConfirmButton
-      label={isActive ? "Deactivate" : "Reactivate"}
-      title={isActive ? "Deactivate position" : "Reactivate position"}
-      description={isActive ? "This ends the member's term today." : "This resumes the member's term."}
+      label={isActive ? "Mark vacant" : "Reinstate officer"}
+      title={isActive ? "Mark position vacant?" : "Reinstate officer?"}
+      description={isActive
+        ? "This ends the current officer assignment today. The position remains active and will appear as vacant."
+        : "This restores the officer assignment and ends any other active assignment for this position."}
       variant={isActive ? "destructive" : "outline"}
       onConfirm={() => toggleLeadershipPosition(id, !isActive)}
       onDone={() => router.refresh()}
