@@ -30,6 +30,16 @@ export function LeadershipProfileDialog({ id, roleName, userName, bio, photoUrl,
   const [isSubmitting, setIsSubmitting] = useState(false);
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      setProfileBio(bio);
+      setProfilePhotoUrl(photoUrl);
+      setIsProfilePublished(isPublished);
+      setError(null);
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -54,7 +64,7 @@ export function LeadershipProfileDialog({ id, roleName, userName, bio, photoUrl,
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger render={<Button size="xs" variant="outline">Edit bio &amp; portrait</Button>} />
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -97,7 +107,9 @@ export function LeadershipProfileDialog({ id, roleName, userName, bio, photoUrl,
                 </CldUploadWidget>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Use a secure Cloudinary image URL or upload a portrait.</p>
+            <p className="text-xs text-muted-foreground">
+              Use a secure Cloudinary image URL or upload a portrait. Click Save profile to apply your changes.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`officer-bio-${id}`}>Biography</Label>
