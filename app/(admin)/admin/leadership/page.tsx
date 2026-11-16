@@ -95,6 +95,7 @@ export default async function LeadershipPage() {
                 <td>
                   <p className="font-medium text-oroko-black">{m.userName}</p>
                   <p className="text-xs text-muted-foreground">{m.userEmail}</p>
+                  {m.isPublicProfile && <p className="text-xs font-medium text-oroko-green">Public page record</p>}
                 </td>
                 <td>{m.roleName}</td>
                 <td>{m.term || "Not specified"}</td>

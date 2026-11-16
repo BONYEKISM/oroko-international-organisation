@@ -177,7 +177,7 @@ export const getExecutiveCouncil = cache(async (): Promise<ExecutiveCouncil> => 
       .sort({ order: 1, name: 1 })
       .lean<IGovernanceRole[]>(),
     ExecutiveMember.find({ isActive: true })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .populate<{ user: IUser & { _id: Types.ObjectId } }>(
         "user",
         "firstName lastName email phone profilePhoto website linkedIn privacySettings",

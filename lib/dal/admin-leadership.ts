@@ -35,7 +35,7 @@ export async function getExecutivePresidentMessage() {
 export async function getLeadershipMembers() {
   await connectDB();
   const members = await ExecutiveMember.find({})
-    .sort({ isActive: -1, createdAt: -1 })
+    .sort({ isActive: -1, createdAt: -1, _id: -1 })
     .populate<{ user: IUser & { _id: Types.ObjectId } }>(
       "user",
       "firstName lastName email phone profilePhoto website linkedIn privacySettings",
@@ -47,13 +47,18 @@ export async function getLeadershipMembers() {
     )
     .lean();
 
+  const currentRoleIds = new Set<string>();
   return members
     .filter((m) => m.user && m.role && m.role.organ === "executive")
     .map((m) => {
       const user = m.user as unknown as IUser & { _id: Types.ObjectId };
       const role = m.role as unknown as IGovernanceRole & { _id: Types.ObjectId };
+      const id = (m._id as Types.ObjectId).toString();
+      const roleId = role._id.toString();
+      const isPublicProfile = m.isActive && !currentRoleIds.has(roleId);
+      if (isPublicProfile) currentRoleIds.add(roleId);
       return {
-        id: (m._id as Types.ObjectId).toString(),
+        id,
         userId: user._id.toString(),
         userName: `${user.firstName} ${user.lastName}`,
         userEmail: user.email,
@@ -61,7 +66,7 @@ export async function getLeadershipMembers() {
         userPhoto: m.photoUrl || user.profilePhoto || "",
         userWebsite: user.website ?? "",
         userLinkedIn: user.linkedIn ?? "",
-        roleId: role._id.toString(),
+        roleId,
         roleName: role.name,
         term: m.term ?? "",
         startDate: m.startDate?.toISOString() ?? "",
@@ -70,6 +75,7 @@ export async function getLeadershipMembers() {
         bio: m.bio ?? "",
         photoUrl: m.photoUrl ?? "",
         isPublished: m.isPublished !== false,
+        isPublicProfile,
       };
     });
 }
