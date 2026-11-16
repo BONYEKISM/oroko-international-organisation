@@ -212,6 +212,8 @@ export const getExecutiveCouncil = cache(async (): Promise<ExecutiveCouncil> => 
       const userPhotoUrl = publicCloudinaryImageUrl(user.profilePhoto);
       if ((role.isPresident || role.name.trim().toUpperCase() === "PRESIDENT") && !memberPhotoUrl) {
         console.info("[governance/executive] President portrait data", {
+          profileId: (member._id as Types.ObjectId).toString(),
+          roleId,
           hasAssignedPortrait: Boolean(member.photoUrl),
           assignedPortraitIsCloudinary: Boolean(memberPhotoUrl),
           hasUserPortrait: Boolean(user.profilePhoto),

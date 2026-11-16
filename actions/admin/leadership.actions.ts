@@ -283,6 +283,10 @@ export async function updateLeadershipProfile(id: string, data: unknown): Promis
     member.photoUrl = parsed.data.photoUrl || undefined;
     member.isPublished = parsed.data.isPublished;
     await member.save();
+    console.info("[updateLeadershipProfile] Saved officer profile", {
+      profileId: id,
+      hasPortrait: Boolean(member.photoUrl),
+    });
 
     await logAudit({
       actorId: admin.id, actorName: admin.name,
