@@ -14,7 +14,13 @@ const COUNCIL_DESCRIPTION =
   "The Executive Council is responsible for implementing the resolutions of the General Assembly and managing the activities of OROKO INTERNATIONAL. Its officers serve in accordance with the organisation's Constitution and applicable governance decisions.";
 
 export default async function ExecutivePage() {
-  const council = await getExecutiveCouncil();
+  let council: Awaited<ReturnType<typeof getExecutiveCouncil>>;
+  try {
+    council = await getExecutiveCouncil();
+  } catch (error) {
+    console.error("[governance/executive] Failed to load council data", error);
+    throw error;
+  }
   const president = council.positions.find((position) => position.isPresident)
     ?? council.positions.find((position) => position.roleName.trim().toUpperCase() === "PRESIDENT");
   const otherPositions = council.positions
