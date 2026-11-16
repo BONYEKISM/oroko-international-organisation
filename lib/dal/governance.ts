@@ -11,7 +11,7 @@ import OrgSettings from "@/models/OrgSettings";
 import { Types } from "mongoose";
 import type { IGovernanceRole } from "@/models/GovernanceRole";
 import type { IExecutiveMember } from "@/models/ExecutiveMember";
-import type { IUser } from "@/models/User";
+import User, { type IUser } from "@/models/User";
 
 // ─── Serialized types (plain objects for Server→Client passing) ─────────────
 
@@ -180,7 +180,8 @@ export const getExecutiveCouncil = cache(async (): Promise<ExecutiveCouncil> => 
       .sort({ createdAt: -1 })
       .populate<{ user: IUser & { _id: Types.ObjectId } }>(
         "user",
-        "firstName lastName email phone profilePhoto website linkedIn privacySettings"
+        "firstName lastName email phone profilePhoto website linkedIn privacySettings",
+        User
       )
       .populate<{ role: IGovernanceRole & { _id: Types.ObjectId } }>(
         "role",
@@ -285,7 +286,7 @@ export const getCommitteeBySlug = cache(async (slug: string): Promise<CommitteeD
     committee: committee._id,
     isActive: true,
   })
-    .populate("user", "firstName lastName profilePhoto")
+    .populate("user", "firstName lastName profilePhoto", User)
     .sort({ role: 1 })
     .lean();
 
