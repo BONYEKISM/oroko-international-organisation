@@ -1,19 +1,55 @@
 "use server";
 
+import { createHash, randomBytes } from "node:crypto";
 import { signIn, signOut } from "@/auth";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import Membership from "@/models/Membership";
-import { registerSchema } from "@/lib/validations/auth";
+import {
+  registerSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
+} from "@/lib/validations/auth";
 import { isAdminRole } from "@/lib/permissions";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
+import { sendPasswordResetEmail } from "@/lib/password-reset-email";
 
 export type ActionResult = {
   success: boolean;
   error?: string;
 };
+
+const PASSWORD_RESET_MESSAGE =
+  "If an account exists for that email, we’ll send a password reset link shortly. The link expires in 30 minutes.";
+
+function getPasswordResetOrigin() {
+  const configuredUrls = [process.env.AUTH_URL, process.env.NEXTAUTH_URL].filter(
+    (value): value is string => Boolean(value)
+  );
+  if (configuredUrls.length === 0) {
+    throw new Error("AUTH_URL or NEXTAUTH_URL must be configured.");
+  }
+
+  const urls = configuredUrls.map((value) => new URL(value));
+  if (new Set(urls.map((url) => url.origin)).size > 1) {
+    throw new Error("AUTH_URL and NEXTAUTH_URL must use the same origin.");
+  }
+
+  const url = urls[0];
+  if (url.protocol !== "https:" && process.env.NODE_ENV === "production") {
+    throw new Error("Password reset requires an HTTPS application URL in production.");
+  }
+  if (
+    process.env.NODE_ENV === "production" &&
+    ["localhost", "127.0.0.1", "::1"].includes(url.hostname)
+  ) {
+    throw new Error("Password reset cannot use a localhost URL in production.");
+  }
+
+  return url.origin;
+}
 
 export async function registerUser(
   data: unknown
@@ -70,6 +106,128 @@ export async function registerUser(
     }
     console.error("Registration error:", error);
     return { success: false, error: "Something went wrong. Please try again." };
+  }
+}
+
+export async function requestPasswordReset(
+  email: unknown
+): Promise<ActionResult & { message?: string }> {
+  const parsed = requestPasswordResetSchema.safeParse({ email });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid email address" };
+  }
+
+  if (!process.env.RESEND_API_KEY || !process.env.PASSWORD_RESET_FROM) {
+    console.error("[requestPasswordReset] Resend is not configured.");
+    return { success: false, error: "Password reset is temporarily unavailable. Please try again later." };
+  }
+
+  let origin: string;
+  try {
+    origin = getPasswordResetOrigin();
+  } catch (error) {
+    console.error("[requestPasswordReset] Invalid application URL configuration", error);
+    return { success: false, error: "Password reset is temporarily unavailable. Please try again later." };
+  }
+
+  const now = new Date();
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
+  try {
+    await connectDB();
+    const user = await User.findOneAndUpdate(
+      {
+        email: parsed.data.email,
+        isActive: { $ne: false },
+        $or: [
+          { passwordResetSentAt: { $exists: false } },
+          { passwordResetSentAt: { $lte: new Date(now.getTime() - 60_000) } },
+        ],
+      },
+      {
+        $set: {
+          passwordResetTokenHash: tokenHash,
+          passwordResetExpiresAt: new Date(now.getTime() + 30 * 60_000),
+          passwordResetSentAt: now,
+        },
+      },
+      { new: true }
+    ).select("_id email");
+
+    if (!user) return { success: true, message: PASSWORD_RESET_MESSAGE };
+
+    const resetUrl = new URL("/auth/reset-password", origin);
+    resetUrl.searchParams.set("token", token);
+
+    try {
+      await sendPasswordResetEmail(user.email, resetUrl.toString());
+    } catch (error) {
+      console.error("[requestPasswordReset] Reset email delivery failed", {
+        userId: user._id.toString(),
+        error: error instanceof Error ? error.message : "Unknown email delivery error",
+      });
+      try {
+        await User.updateOne(
+          { _id: user._id, passwordResetTokenHash: tokenHash },
+          {
+            $unset: {
+              passwordResetTokenHash: 1,
+              passwordResetExpiresAt: 1,
+              passwordResetSentAt: 1,
+            },
+          }
+        );
+      } catch (cleanupError) {
+        console.error("[requestPasswordReset] Failed to clear undelivered reset token", cleanupError);
+      }
+    }
+
+    return { success: true, message: PASSWORD_RESET_MESSAGE };
+  } catch (error) {
+    console.error("[requestPasswordReset]", error);
+    return { success: false, error: "Unable to process the password reset request right now." };
+  }
+}
+
+export async function resetPassword(
+  token: unknown,
+  password: unknown,
+  confirmPassword: unknown
+): Promise<ActionResult> {
+  const parsed = resetPasswordSchema.safeParse({ token, password, confirmPassword });
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid password reset data" };
+  }
+
+  try {
+    await connectDB();
+    const tokenHash = createHash("sha256").update(parsed.data.token).digest("hex");
+    const hashedPassword = await bcrypt.hash(parsed.data.password, 12);
+    const result = await User.updateOne(
+      {
+        passwordResetTokenHash: tokenHash,
+        passwordResetExpiresAt: { $gt: new Date() },
+        isActive: { $ne: false },
+      },
+      {
+        $set: { password: hashedPassword },
+        $unset: {
+          passwordResetTokenHash: 1,
+          passwordResetExpiresAt: 1,
+          passwordResetSentAt: 1,
+        },
+      }
+    );
+
+    if (result.modifiedCount !== 1) {
+      return { success: false, error: "This reset link is invalid or expired. Request a new one." };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[resetPassword]", error);
+    return { success: false, error: "Unable to reset the password right now. Please try again." };
   }
 }
 

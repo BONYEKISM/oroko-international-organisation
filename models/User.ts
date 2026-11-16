@@ -39,6 +39,9 @@ export interface IUser extends Document {
   lastName: string;
   email: string;
   password: string;
+  passwordResetTokenHash?: string;
+  passwordResetExpiresAt?: Date;
+  passwordResetSentAt?: Date;
   role: AdminRole;
   membershipStatus: "pending" | "active" | "suspended" | "expired" | "rejected" | "resigned";
   isEmailVerified: boolean;
@@ -103,6 +106,9 @@ const UserSchema = new Schema<IUser>(
       minlength: [8, "Password must be at least 8 characters"],
       select: false,
     },
+    passwordResetTokenHash: { type: String, select: false },
+    passwordResetExpiresAt: { type: Date, select: false },
+    passwordResetSentAt: { type: Date, select: false },
     role: {
       type: String,
       enum: [

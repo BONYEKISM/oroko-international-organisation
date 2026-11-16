@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginSchema, type LoginInput } from "@/lib/validations/auth";
 import { loginUser } from "@/actions/auth.actions";
@@ -102,6 +103,14 @@ export function LoginForm() {
         {isSubmitting && <Loader2 className="size-4 animate-spin" />}
         {isSubmitting ? "Signing in…" : "Sign In"}
       </button>
+      <div className="text-right">
+        <Link
+          href="/auth/forgot-password"
+          className="text-oroko-gold hover:text-oroko-gold-light transition-colors text-sm"
+        >
+          Forgot your password?
+        </Link>
+      </div>
     </form>
   );
 }
