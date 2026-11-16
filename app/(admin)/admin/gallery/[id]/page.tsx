@@ -6,6 +6,7 @@ import GalleryAlbum from "@/models/GalleryAlbum";
 import { Types } from "mongoose";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
+import { AlbumFormDialog } from "@/components/admin/gallery/AlbumFormDialog";
 import { AlbumImagesManager } from "@/components/admin/gallery/AlbumImagesManager";
 import { ToggleAlbumButton } from "@/components/admin/gallery/ToggleAlbumButton";
 
@@ -28,7 +29,12 @@ export default async function AlbumDetailPage({ params }: PageProps) {
       <PageHeader
         title={album.title}
         description={album.description || "No description"}
-        action={<ToggleAlbumButton id={id} isPublished={album.isPublished} />}
+        action={
+          <>
+            <AlbumFormDialog album={{ id, title: album.title, description: album.description ?? "" }} />
+            <ToggleAlbumButton id={id} isPublished={album.isPublished} />
+          </>
+        }
       />
       <Card>
         <CardContent className="pt-4">
