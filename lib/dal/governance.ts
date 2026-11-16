@@ -208,11 +208,21 @@ export const getExecutiveCouncil = cache(async (): Promise<ExecutiveCouncil> => 
     if (member && published) {
       const user = member.user;
       const privacySettings = user.privacySettings;
+      const memberPhotoUrl = publicCloudinaryImageUrl(member.photoUrl);
+      const userPhotoUrl = publicCloudinaryImageUrl(user.profilePhoto);
+      if ((role.isPresident || role.name.trim().toUpperCase() === "PRESIDENT") && !memberPhotoUrl) {
+        console.info("[governance/executive] President portrait data", {
+          hasAssignedPortrait: Boolean(member.photoUrl),
+          assignedPortraitIsCloudinary: Boolean(memberPhotoUrl),
+          hasUserPortrait: Boolean(user.profilePhoto),
+          userPortraitIsCloudinary: Boolean(userPhotoUrl),
+        });
+      }
       officer = {
         id: (member._id as Types.ObjectId).toString(),
         userId: user._id.toString(),
         userName: `${user.firstName} ${user.lastName}`,
-        userPhoto: publicCloudinaryImageUrl(member.photoUrl) || publicCloudinaryImageUrl(user.profilePhoto),
+        userPhoto: memberPhotoUrl || userPhotoUrl,
         email: privacySettings?.showEmail ? user.email : undefined,
         phone: privacySettings?.showPhone ? user.phone : undefined,
         website: privacySettings?.isDirectoryVisible ? publicHttpsUrl(user.website) : undefined,
