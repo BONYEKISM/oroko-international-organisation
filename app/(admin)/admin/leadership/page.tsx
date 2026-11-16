@@ -107,6 +107,7 @@ export default async function LeadershipPage() {
                       id={m.id}
                       roleName={m.roleName}
                       userName={m.userName}
+                      term={m.term}
                       bio={m.bio}
                       photoUrl={m.photoUrl}
                       isPublished={m.isPublished}

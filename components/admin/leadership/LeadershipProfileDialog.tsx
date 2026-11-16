@@ -15,14 +15,16 @@ type Props = {
   id: string;
   roleName: string;
   userName: string;
+  term: string;
   bio: string;
   photoUrl: string;
   isPublished: boolean;
 };
 
-export function LeadershipProfileDialog({ id, roleName, userName, bio, photoUrl, isPublished }: Props) {
+export function LeadershipProfileDialog({ id, roleName, userName, term, bio, photoUrl, isPublished }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [profileTerm, setProfileTerm] = useState(term);
   const [profileBio, setProfileBio] = useState(bio);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(photoUrl);
   const [isProfilePublished, setIsProfilePublished] = useState(isPublished);
@@ -33,6 +35,7 @@ export function LeadershipProfileDialog({ id, roleName, userName, bio, photoUrl,
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
     if (nextOpen) {
+      setProfileTerm(term);
       setProfileBio(bio);
       setProfilePhotoUrl(photoUrl);
       setIsProfilePublished(isPublished);
@@ -46,6 +49,7 @@ export function LeadershipProfileDialog({ id, roleName, userName, bio, photoUrl,
     setIsSubmitting(true);
     try {
       const result = await updateLeadershipProfile(id, {
+        term: profileTerm,
         bio: profileBio,
         photoUrl: profilePhotoUrl,
         isPublished: isProfilePublished,
@@ -65,13 +69,23 @@ export function LeadershipProfileDialog({ id, roleName, userName, bio, photoUrl,
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button size="xs" variant="outline">Edit bio &amp; portrait</Button>} />
+      <DialogTrigger render={<Button size="xs" variant="outline">Edit profile</Button>} />
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit {roleName} profile</DialogTitle>
           <DialogDescription>Review the content before publishing {userName}&apos;s profile.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSave} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={`officer-term-${id}`}>Term of office</Label>
+            <Input
+              id={`officer-term-${id}`}
+              value={profileTerm}
+              onChange={(e) => setProfileTerm(e.target.value)}
+              maxLength={100}
+              placeholder="e.g. 2 years"
+            />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor={`officer-photo-${id}`}>Portrait URL</Label>
             <div className="flex gap-2">

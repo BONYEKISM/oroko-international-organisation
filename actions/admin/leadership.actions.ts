@@ -258,6 +258,7 @@ export async function assignLeadershipPosition(data: unknown): Promise<ActionRes
 }
 
 const profileSchema = z.object({
+  term: z.string().trim().max(100).optional().or(z.literal("")),
   bio: z.string().trim().max(2000).optional().or(z.literal("")),
   photoUrl: secureUrl,
   isPublished: z.boolean(),
@@ -279,6 +280,7 @@ export async function updateLeadershipProfile(id: string, data: unknown): Promis
       return { success: false, error: "Executive officer profile not found" };
     }
 
+    member.term = parsed.data.term || undefined;
     member.bio = parsed.data.bio || undefined;
     member.photoUrl = parsed.data.photoUrl || undefined;
     member.isPublished = parsed.data.isPublished;
