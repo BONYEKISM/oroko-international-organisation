@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db";
 import ExecutiveMember from "@/models/ExecutiveMember";
 import GovernanceRole, { type IGovernanceRole } from "@/models/GovernanceRole";
 import OrgSettings from "@/models/OrgSettings";
-import type { IUser } from "@/models/User";
+import User, { type IUser } from "@/models/User";
 import { Types } from "mongoose";
 import { ensureDefaultExecutivePositions } from "@/lib/dal/governance";
 
@@ -38,7 +38,8 @@ export async function getLeadershipMembers() {
     .sort({ isActive: -1, createdAt: -1 })
     .populate<{ user: IUser & { _id: Types.ObjectId } }>(
       "user",
-      "firstName lastName email phone profilePhoto website linkedIn privacySettings"
+      "firstName lastName email phone profilePhoto website linkedIn privacySettings",
+      User
     )
     .populate<{ role: IGovernanceRole & { _id: Types.ObjectId } }>(
       "role",
