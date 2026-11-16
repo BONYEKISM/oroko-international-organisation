@@ -55,7 +55,7 @@ export function LeadershipProfileDialog({ id, roleName, userName, bio, photoUrl,
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="xs" variant="outline">Edit profile</Button>} />
+      <DialogTrigger render={<Button size="xs" variant="outline">Edit bio &amp; portrait</Button>} />
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit {roleName} profile</DialogTitle>

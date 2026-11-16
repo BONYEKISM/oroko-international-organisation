@@ -180,8 +180,20 @@ const optionalDate = z.string().refine(
   "Enter a valid date"
 ).optional().or(z.literal(""));
 
+function isSecureCloudinaryUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && url.hostname === "res.cloudinary.com"
+      && !url.username
+      && !url.password;
+  } catch {
+    return false;
+  }
+}
+
 const secureUrl = z.string().url().refine(
-  (value) => !value || value.startsWith("https://res.cloudinary.com/"),
+  (value) => !value || isSecureCloudinaryUrl(value),
   "Use a secure Cloudinary image URL"
 ).optional().or(z.literal(""));
 

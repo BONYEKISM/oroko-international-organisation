@@ -42,14 +42,18 @@ function Portrait({
   officer?: OfficerProfile;
   featured: boolean;
 }) {
-  if (officer?.userPhoto) {
+  const photoUrl = officer?.userPhoto;
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string>();
+
+  if (photoUrl && failedPhotoUrl !== photoUrl) {
     return (
       <Image
-        src={officer.userPhoto}
+        src={photoUrl}
         alt={`${officer.userName}, ${officer.roleName}`}
         fill
         sizes={featured ? "(max-width: 768px) 100vw, 42vw" : "(max-width: 640px) 100vw, 33vw"}
         className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+        onError={() => setFailedPhotoUrl(photoUrl)}
       />
     );
   }
@@ -57,7 +61,7 @@ function Portrait({
     <div className={`flex h-full w-full flex-col items-center justify-center gap-3 bg-linear-to-br from-oroko-green to-oroko-black ${featured ? "text-oroko-gold/60" : "text-white/45"}`}>
       <UserRound className={featured ? "size-24" : "size-12"} strokeWidth={1} aria-hidden="true" />
       <span className="text-[9px] font-medium uppercase tracking-[0.18em]">
-        {officer ? "Portrait forthcoming" : "Awaiting appointment"}
+        {photoUrl ? "Portrait unavailable" : officer ? "Portrait forthcoming" : "Awaiting appointment"}
       </span>
     </div>
   );

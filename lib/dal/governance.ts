@@ -105,6 +105,21 @@ function publicHttpsUrl(value?: string) {
   return value?.startsWith("https://") ? value : undefined;
 }
 
+function publicCloudinaryImageUrl(value?: string) {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && url.hostname === "res.cloudinary.com"
+      && !url.username
+      && !url.password
+      ? value
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ─── Queries ────────────────────────────────────────────────────────────────
 
 const DEFAULT_EXECUTIVE_POSITIONS = [
@@ -196,7 +211,7 @@ export const getExecutiveCouncil = cache(async (): Promise<ExecutiveCouncil> => 
         id: (member._id as Types.ObjectId).toString(),
         userId: user._id.toString(),
         userName: `${user.firstName} ${user.lastName}`,
-        userPhoto: member.photoUrl || user.profilePhoto,
+        userPhoto: publicCloudinaryImageUrl(member.photoUrl) || publicCloudinaryImageUrl(user.profilePhoto),
         email: privacySettings?.showEmail ? user.email : undefined,
         phone: privacySettings?.showPhone ? user.phone : undefined,
         website: privacySettings?.isDirectoryVisible ? publicHttpsUrl(user.website) : undefined,
