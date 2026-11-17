@@ -15,7 +15,10 @@ export interface IEventRegistration extends Document {
   totalAmount: number;
   status: RegistrationStatus;
   registrationCode: string;
+  paymentProvider?: "stripe" | "paypal";
   stripePaymentIntentId?: string;
+  paypalOrderId?: string;
+  paypalOrderIds: string[];
   checkedInAt?: Date;
   reminderSentAt?: Date;
   notes?: string;
@@ -42,7 +45,10 @@ const EventRegistrationSchema = new Schema<IEventRegistration>(
     },
     // Unique code for check-in — human readable
     registrationCode: { type: String, unique: true, trim: true },
+    paymentProvider: { type: String, enum: ["stripe", "paypal"] },
     stripePaymentIntentId: { type: String, select: false },
+    paypalOrderId: { type: String, select: false },
+    paypalOrderIds: { type: [String], default: [], select: false },
     checkedInAt: { type: Date },
     reminderSentAt: { type: Date },
     notes: { type: String, trim: true },
@@ -60,6 +66,8 @@ EventRegistrationSchema.pre("save", function () {
 EventRegistrationSchema.index({ event: 1, attendeeEmail: 1 });
 EventRegistrationSchema.index({ user: 1 });
 EventRegistrationSchema.index({ status: 1 });
+EventRegistrationSchema.index({ stripePaymentIntentId: 1 }, { sparse: true });
+EventRegistrationSchema.index({ paypalOrderId: 1 }, { sparse: true });
 
 const EventRegistration: Model<IEventRegistration> =
   mongoose.models.EventRegistration ??

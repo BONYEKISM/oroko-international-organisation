@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getDonationHistory } from "@/actions/donation.actions";
 import { Receipt, Heart } from "lucide-react";
+import { CancelMonthlyDonationButton } from "@/components/donations/CancelMonthlyDonationButton";
 
 export const metadata: Metadata = { title: "My Donations" };
 
 const statusStyle: Record<string, string> = {
   succeeded: "text-emerald-600 bg-emerald-50 border-emerald-200",
+  active: "text-emerald-600 bg-emerald-50 border-emerald-200",
+  cancelled: "text-muted-foreground bg-muted border-border",
   pending: "text-amber-600 bg-amber-50 border-amber-200",
   failed: "text-destructive bg-destructive/10 border-destructive/20",
   refunded: "text-muted-foreground bg-muted border-border",
@@ -58,6 +61,9 @@ export default async function DonationsPortalPage() {
                   {d.projectTitle ? `Project: ${d.projectTitle}` : "General donation"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
+                  {d.frequency === "monthly" ? "Monthly recurring donation" : "One-time donation"} · {d.paymentProvider === "paypal" ? "PayPal" : "Stripe"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {new Date(d.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
                 </p>
               </div>
@@ -66,6 +72,9 @@ export default async function DonationsPortalPage() {
                   <Receipt className="size-3.5" />
                   {d.receiptNumber}
                 </div>
+              )}
+              {d.frequency === "monthly" && d.status === "active" && (
+                <CancelMonthlyDonationButton donationId={d.id} />
               )}
             </div>
           ))}

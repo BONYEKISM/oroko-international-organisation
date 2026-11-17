@@ -31,6 +31,9 @@ export default async function PortalPage() {
   const quickLinks = [
     { href: "/portal/profile", icon: User, label: "Edit Profile", sub: "Update your info and photo" },
     { href: "/portal/id-card", icon: CreditCard, label: "My ID Card", sub: "View your OROKO digital card" },
+    ...(membership?.paymentStatus === "unpaid"
+      ? [{ href: "/portal/membership", icon: CreditCard, label: "Pay Membership Dues", sub: "Complete your application payment" }]
+      : []),
     { href: "/members", icon: Users, label: "Member Directory", sub: "Browse the OROKO community" },
   ];
 

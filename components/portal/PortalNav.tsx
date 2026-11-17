@@ -9,6 +9,7 @@ const portalLinks = [
   { href: "/portal", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/portal/profile", label: "My Profile", icon: User, exact: false },
   { href: "/portal/id-card", label: "My ID Card", icon: CreditCard, exact: false },
+  { href: "/portal/membership", label: "Membership Dues", icon: CreditCard, exact: false },
   { href: "/portal/events", label: "My Events", icon: CalendarDays, exact: false },
   { href: "/members", label: "Members", icon: Users, exact: false },
   { href: "/portal/governance", label: "Governance", icon: Scale, exact: false },

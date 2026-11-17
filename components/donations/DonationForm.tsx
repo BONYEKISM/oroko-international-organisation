@@ -15,7 +15,15 @@ import { Loader2, Heart, CheckCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createPaymentIntent, confirmDonation } from "@/actions/donation.actions";
+import Link from "next/link";
+
+import {
+  confirmDonation,
+  createPayPalDonationOrder,
+  createPayPalDonationSubscription,
+  createPaymentIntent,
+  createStripeDonationSubscription,
+} from "@/actions/donation.actions";
 import { cn } from "@/lib/utils";
 
 const stripePromise = loadStripe(
@@ -43,6 +51,7 @@ export function DonationForm({ projectId, projectTitle }: Props) {
   const [amount, setAmount] = useState<number>(25);
   const [customAmount, setCustomAmount] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [paymentProvider, setPaymentProvider] = useState<"stripe" | "paypal">("stripe");
   const [frequency, setFrequency] = useState<"once" | "monthly">("once");
   const [step, setStep] = useState<"details" | "payment" | "success">("details");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
@@ -65,22 +74,59 @@ export function DonationForm({ projectId, projectTitle }: Props) {
   const onDetailsSubmit = async (data: FormValues) => {
     setIsLoading(true);
     setError(null);
-    const result = await createPaymentIntent({
+    const donationData = {
       ...data,
       amount: finalAmount,
       currency,
       frequency,
       type: projectId ? "project" : "general",
       projectId,
-    });
-    setIsLoading(false);
-    if (!result.success || !result.clientSecret) {
-      setError(result.error ?? "Could not set up payment");
-      return;
+    };
+
+    try {
+      if (frequency === "monthly") {
+        if (paymentProvider === "stripe") {
+          const result = await createStripeDonationSubscription(donationData);
+          if (!result.success || !result.checkoutUrl) {
+            setError(result.error ?? "Could not set up recurring donation.");
+            return;
+          }
+          window.location.assign(result.checkoutUrl);
+        } else {
+          const result = await createPayPalDonationSubscription(donationData);
+          if (!result.success || !result.approvalUrl) {
+            setError(result.error ?? "Could not set up recurring donation.");
+            return;
+          }
+          window.location.assign(result.approvalUrl);
+        }
+        return;
+      }
+
+      if (paymentProvider === "paypal") {
+        const result = await createPayPalDonationOrder(donationData);
+        if (!result.success || !result.approvalUrl) {
+          setError(result.error ?? "Could not set up PayPal checkout.");
+          return;
+        }
+        window.location.assign(result.approvalUrl);
+        return;
+      }
+
+      const result = await createPaymentIntent(donationData);
+      if (!result.success || !result.clientSecret) {
+        setError(result.error ?? "Could not set up payment.");
+        return;
+      }
+      setClientSecret(result.clientSecret);
+      setDonationId(result.donationId ?? null);
+      setStep("payment");
+    } catch (submitError) {
+      console.error("[DonationForm]", submitError);
+      setError("Could not start payment. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    setClientSecret(result.clientSecret);
-    setDonationId(result.donationId ?? null);
-    setStep("payment");
   };
 
   if (step === "success") {
@@ -93,7 +139,9 @@ export function DonationForm({ projectId, projectTitle }: Props) {
           Thank you!
         </h3>
         <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-          Your donation of {currency} {finalAmount.toLocaleString()} has been received. A receipt will be sent to your email.
+          {frequency === "monthly"
+            ? `Your monthly ${currency} ${finalAmount.toLocaleString()} donation is active. You can manage or cancel it from your member portal.`
+            : `Your donation of ${currency} ${finalAmount.toLocaleString()} has been received.`}
         </p>
       </div>
     );
@@ -113,6 +161,11 @@ export function DonationForm({ projectId, projectTitle }: Props) {
           {error && (
             <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 px-4 py-3 rounded-sm">
               {error}
+              {error.includes("Sign in") && (
+                <p className="mt-2">
+                  <Link href="/auth/login" className="font-semibold underline">Sign in to continue</Link>
+                </p>
+              )}
             </div>
           )}
 
@@ -133,6 +186,33 @@ export function DonationForm({ projectId, projectTitle }: Props) {
                 {f === "once" ? "One time" : "Monthly"}
               </button>
             ))}
+          </div>
+          {frequency === "monthly" && (
+            <p className="text-xs text-muted-foreground">
+              Monthly donations renew automatically. Sign in is required so you can manage or cancel your subscription.
+            </p>
+          )}
+
+          <div className="space-y-2">
+            <Label className="text-xs tracking-wider uppercase text-muted-foreground">Payment method</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["stripe", "paypal"] as const).map((provider) => (
+                <button
+                  key={provider}
+                  type="button"
+                  aria-pressed={paymentProvider === provider}
+                  onClick={() => setPaymentProvider(provider)}
+                  className={cn(
+                    "py-2.5 text-sm font-medium border rounded-sm capitalize transition-colors",
+                    paymentProvider === provider
+                      ? "border-oroko-gold bg-oroko-gold/10 text-oroko-black"
+                      : "border-border text-muted-foreground hover:border-oroko-gold/40"
+                  )}
+                >
+                  {provider === "paypal" ? "PayPal" : "Card (Stripe)"}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Currency */}
@@ -263,7 +343,14 @@ function StripePaymentForm({
       return;
     }
 
-    if (donationId) await confirmDonation(donationId);
+    if (donationId) {
+      const confirmation = await confirmDonation(donationId);
+      if (!confirmation.success) {
+        setError(confirmation.error ?? "Payment was received but could not be confirmed.");
+        setIsProcessing(false);
+        return;
+      }
+    }
     setIsProcessing(false);
     onSuccess();
   };

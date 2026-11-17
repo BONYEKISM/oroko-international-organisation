@@ -18,5 +18,7 @@ export async function getOrgSettings() {
     notifyOnNewDonation: settings.notifyOnNewDonation,
     notifyOnWelfareRequest: settings.notifyOnWelfareRequest,
     memberIdPrefix: settings.memberIdPrefix,
+    membershipDuesAmount: settings.membershipDuesAmount,
+    membershipDuesCurrency: settings.membershipDuesCurrency,
   };
 }

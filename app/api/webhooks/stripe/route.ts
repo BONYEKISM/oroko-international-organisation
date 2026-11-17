@@ -1,60 +1,76 @@
-import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { connectDB } from "@/lib/db";
-import Donation from "@/models/Donation";
-import Project from "@/models/Project";
 import type Stripe from "stripe";
+import {
+  cancelDonationSubscription,
+  fulfillStripePaymentIntent,
+  recordRecurringDonationPayment,
+  stripeAmountToMajor,
+} from "@/lib/payments/fulfillment";
+import { completeStripeSubscription } from "@/lib/payments/return";
 
-export async function POST(req: Request) {
-  const body = await req.text();
-  const headersList = await headers();
-  const sig = headersList.get("stripe-signature");
+export async function POST(request: Request) {
+  const body = await request.text();
+  const signature = request.headers.get("stripe-signature");
 
-  if (!process.env.STRIPE_WEBHOOK_SECRET || !sig) {
+  if (!process.env.STRIPE_WEBHOOK_SECRET || !signature) {
     return NextResponse.json({ error: "Webhook configuration missing" }, { status: 400 });
   }
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Webhook error";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid Stripe webhook signature.";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  if (event.type === "payment_intent.succeeded") {
-    const pi = event.data.object as Stripe.PaymentIntent;
-    try {
-      await connectDB();
-      const donation = await Donation.findOneAndUpdate(
-        { stripePaymentIntentId: pi.id },
-        {
-          $set: {
-            status: "succeeded",
-            receiptNumber: `OROKO-${Date.now()}`,
-          },
-        },
-        { new: true }
-      );
-      if (donation?.project) {
-        await Project.findByIdAndUpdate(donation.project, {
-          $inc: { fundingRaised: donation.amount },
-        });
+  try {
+    switch (event.type) {
+      case "payment_intent.succeeded":
+        await fulfillStripePaymentIntent(event.data.object as Stripe.PaymentIntent);
+        break;
+
+      case "checkout.session.completed": {
+        const checkout = event.data.object as Stripe.Checkout.Session;
+        if (checkout.mode === "subscription" && checkout.subscription) {
+          await completeStripeSubscription(checkout.id);
+        }
+        break;
       }
-    } catch (err) {
-      console.error("[webhook payment_intent.succeeded]", err);
+
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subscriptionDetails = invoice.parent?.subscription_details;
+        const subscriptionValue = subscriptionDetails?.subscription;
+        const subscriptionId =
+          typeof subscriptionValue === "string" ? subscriptionValue : subscriptionValue?.id;
+        if (subscriptionId && invoice.amount_paid > 0) {
+          await recordRecurringDonationPayment({
+            provider: "stripe",
+            subscriptionId,
+            donationId: subscriptionDetails?.metadata?.donationId,
+            paymentId: invoice.id,
+            amount: stripeAmountToMajor(invoice.amount_paid, invoice.currency),
+            currency: invoice.currency,
+          });
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        await cancelDonationSubscription({
+          provider: "stripe",
+          subscriptionId: subscription.id,
+        });
+        break;
+      }
     }
-  }
 
-  if (event.type === "payment_intent.payment_failed") {
-    const pi = event.data.object as Stripe.PaymentIntent;
-    await connectDB();
-    await Donation.findOneAndUpdate(
-      { stripePaymentIntentId: pi.id },
-      { $set: { status: "failed" } }
-    );
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    console.error(`[stripe webhook ${event.type}]`, error);
+    return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }

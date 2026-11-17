@@ -10,6 +10,7 @@ export type MembershipStatus =
 
 // Application review workflow — separate from the ongoing membership status above.
 export type ApplicationStatus =
+  | "pending_payment"
   | "pending"
   | "under_review"
   | "needs_information"
@@ -46,6 +47,13 @@ export interface IMembership extends Document {
   phone?: string;
   expiresAt?: Date;
   paymentStatus: "paid" | "unpaid" | "waived";
+  duesAmount?: number;
+  duesCurrency?: string;
+  paidAt?: Date;
+  stripePaymentIntentId?: string;
+  paypalOrderId?: string;
+  paypalOrderIds: string[];
+  paymentProvider?: "stripe" | "paypal";
   // Application review workflow
   applicationStatus: ApplicationStatus;
   reviewedBy?: Types.ObjectId;
@@ -140,9 +148,16 @@ const MembershipSchema = new Schema<IMembership>(
     },
     applicationStatus: {
       type: String,
-      enum: ["pending", "under_review", "needs_information", "approved", "rejected"],
+      enum: ["pending_payment", "pending", "under_review", "needs_information", "approved", "rejected"],
       default: "pending",
     },
+    duesAmount: { type: Number, min: 0 },
+    duesCurrency: { type: String, uppercase: true, trim: true },
+    paidAt: { type: Date },
+    stripePaymentIntentId: { type: String, select: false },
+    paypalOrderId: { type: String, select: false },
+    paypalOrderIds: { type: [String], default: [], select: false },
+    paymentProvider: { type: String, enum: ["stripe", "paypal"] },
     reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
     decisionAt: { type: Date },
     infoRequestMessage: { type: String, trim: true, maxlength: 2000 },
@@ -166,6 +181,8 @@ MembershipSchema.pre("save", async function () {
 });
 
 MembershipSchema.index({ status: 1 });
+MembershipSchema.index({ stripePaymentIntentId: 1 }, { sparse: true });
+MembershipSchema.index({ paypalOrderId: 1 }, { sparse: true });
 
 const Membership: Model<IMembership> =
   mongoose.models.Membership ??

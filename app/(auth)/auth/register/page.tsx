@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/common/Logo";
 import { RegisterForm } from "@/components/auth/RegisterForm";
+import { getOrgSettings } from "@/lib/dal/org-settings";
 
 export const metadata: Metadata = { title: "Join OROKO" };
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const settings = await getOrgSettings();
+
   return (
     <div className="w-full max-w-md">
       {/* Card */}
@@ -29,7 +32,10 @@ export default function RegisterPage() {
         <div className="oroko-divider mb-8" />
 
         {/* Form */}
-        <RegisterForm />
+        <RegisterForm
+          duesAmount={settings.membershipDuesAmount}
+          duesCurrency={settings.membershipDuesCurrency}
+        />
       </div>
 
       {/* Footer link */}

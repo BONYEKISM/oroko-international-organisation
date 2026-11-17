@@ -5,6 +5,8 @@ import { signIn, signOut } from "@/auth";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import Membership from "@/models/Membership";
+import OrgSettings from "@/models/OrgSettings";
+import { beginMembershipCheckout } from "@/lib/payments/membership";
 import {
   registerSchema,
   requestPasswordResetSchema,
@@ -53,14 +55,20 @@ function getPasswordResetOrigin() {
 
 export async function registerUser(
   data: unknown
-): Promise<ActionResult> {
+): Promise<ActionResult & {
+  membershipId?: string;
+  clientSecret?: string;
+  approvalUrl?: string;
+  accountCreated?: boolean;
+}> {
   const parsed = registerSchema.safeParse(data);
   if (!parsed.success) {
     const firstError = parsed.error.issues[0]?.message;
     return { success: false, error: firstError ?? "Invalid form data" };
   }
 
-  const { firstName, lastName, email, password } = parsed.data;
+  const { firstName, lastName, email, password, paymentProvider } = parsed.data;
+  let createdUserId: string | null = null;
 
   try {
     await connectDB();
@@ -90,21 +98,52 @@ export async function registerUser(
         isDirectoryVisible: true,
       },
     });
+    createdUserId = user._id.toString();
 
-    await Membership.create({
+    const orgSettings = await OrgSettings.findOne({});
+
+    const membership = await Membership.create({
       user: user._id,
       memberSince: new Date(),
       membershipType: "regular",
       status: "pending",
+      applicationStatus: "pending_payment",
+      duesAmount: orgSettings?.membershipDuesAmount ?? 50,
+      duesCurrency: orgSettings?.membershipDuesCurrency ?? "EUR",
     });
 
-    return { success: true };
+    const checkout = await beginMembershipCheckout(membership._id.toString(), paymentProvider);
+    if (!checkout.success) {
+      return {
+        success: false,
+        error: `Your account was created, but payment could not be started. Sign in to retry. ${checkout.error ?? ""}`.trim(),
+        membershipId: membership._id.toString(),
+        accountCreated: true,
+      };
+    }
+
+    return {
+      success: true,
+      membershipId: membership._id.toString(),
+      clientSecret: checkout.clientSecret,
+      approvalUrl: checkout.approvalUrl,
+    };
   } catch (error: unknown) {
     const err = error as { code?: number; message?: string };
     if (err?.code === 11000) {
-      return { success: false, error: "An account with this email already exists" };
+      return {
+        success: false,
+        error: "An account with this email already exists. Sign in to resume membership payment.",
+      };
     }
     console.error("Registration error:", error);
+    if (createdUserId) {
+      return {
+        success: false,
+        error: "Your account was created, but payment could not be started. Sign in to retry.",
+        accountCreated: true,
+      };
+    }
     return { success: false, error: "Something went wrong. Please try again." };
   }
 }

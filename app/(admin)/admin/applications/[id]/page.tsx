@@ -42,6 +42,10 @@ export default async function ApplicationReviewPage({ params }: PageProps) {
               <Row label="Profession" value={membership.profession} />
               <Row label="Organization" value={membership.organization} />
               <Row label="Membership Type Requested" value={membership.membershipType} />
+              <Row
+                label="Annual Dues"
+                value={membership.duesAmount == null ? undefined : `${membership.duesCurrency ?? "EUR"} ${membership.duesAmount.toFixed(2)} · ${membership.paymentStatus}`}
+              />
               <Row label="Submitted" value={new Date(membership.createdAt).toLocaleString()} />
               {membership.infoRequestMessage && (
                 <Row label="Info Requested" value={membership.infoRequestMessage} />

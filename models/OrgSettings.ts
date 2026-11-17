@@ -11,6 +11,9 @@ export interface IOrgSettings extends Document {
   notifyOnNewDonation: boolean;
   notifyOnWelfareRequest: boolean;
   memberIdPrefix: string;
+  membershipDuesAmount: number;
+  membershipDuesCurrency: "EUR" | "USD" | "GBP" | "CAD" | "AUD";
+  paypalDonationProductId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +29,9 @@ const OrgSettingsSchema = new Schema<IOrgSettings>(
     notifyOnNewDonation: { type: Boolean, default: true },
     notifyOnWelfareRequest: { type: Boolean, default: true },
     memberIdPrefix: { type: String, trim: true, default: "OROKO" },
+    membershipDuesAmount: { type: Number, min: 0, default: 50 },
+    membershipDuesCurrency: { type: String, uppercase: true, trim: true, default: "EUR" },
+    paypalDonationProductId: { type: String, select: false },
   },
   { timestamps: true }
 );

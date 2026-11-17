@@ -4,12 +4,21 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import {
+  Elements,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import { Loader2, CheckCircle, Ticket } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { registerForEvent } from "@/actions/event.actions";
+import { confirmEventPayment, registerForEvent } from "@/actions/event.actions";
 import { cn } from "@/lib/utils";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "");
 
 const schema = z.object({
   attendeeName: z.string().min(2, "Name is required").max(100),
@@ -42,6 +51,13 @@ export function EventRegistrationForm({ eventId, ticketTypes, defaultName = "", 
   const available = ticketTypes.filter((t) => t.isMembersOnly === false || !!defaultEmail);
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(available[0] ?? null);
   const [result, setResult] = useState<{ code: string; name: string } | null>(null);
+  const [payment, setPayment] = useState<{
+    clientSecret: string;
+    registrationId: string;
+    code: string;
+    name: string;
+  } | null>(null);
+  const [paymentProvider, setPaymentProvider] = useState<"stripe" | "paypal">("stripe");
   const [error, setError] = useState<string | null>(null);
 
   const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -55,17 +71,50 @@ export function EventRegistrationForm({ eventId, ticketTypes, defaultName = "", 
   const onSubmit = async (data: FormValues) => {
     if (!selectedTicket) return;
     setError(null);
-    const res = await registerForEvent({
-      eventId,
-      ticketTypeId: selectedTicket.id,
-      ...data,
-    });
-    if (!res.success) {
-      setError(res.error ?? "Registration failed");
-      return;
+    try {
+      const res = await registerForEvent({
+        eventId,
+        ticketTypeId: selectedTicket.id,
+        paymentProvider,
+        ...data,
+      });
+      if (!res.success) {
+        setError(res.error ?? "Registration failed");
+        return;
+      }
+      if (res.approvalUrl) {
+        window.location.assign(res.approvalUrl);
+        return;
+      }
+      if (res.clientSecret && res.registrationId && res.registrationCode) {
+        setPayment({
+          clientSecret: res.clientSecret,
+          registrationId: res.registrationId,
+          code: res.registrationCode,
+          name: data.attendeeName,
+        });
+        return;
+      }
+      setResult({ code: res.registrationCode!, name: data.attendeeName });
+    } catch (submitError) {
+      console.error("[EventRegistrationForm]", submitError);
+      setError("Could not start registration. Please try again.");
     }
-    setResult({ code: res.registrationCode!, name: data.attendeeName });
   };
+
+  if (payment) {
+    return (
+      <Elements
+        stripe={stripePromise}
+        options={{ clientSecret: payment.clientSecret, appearance: { theme: "stripe" } }}
+      >
+        <StripeTicketPayment
+          payment={payment}
+          onSuccess={() => setResult({ code: payment.code, name: payment.name })}
+        />
+      </Elements>
+    );
+  }
 
   if (result) {
     return (
@@ -176,6 +225,30 @@ export function EventRegistrationForm({ eventId, ticketTypes, defaultName = "", 
         </div>
       )}
 
+      {selectedTicket && !selectedTicket.isFree && (
+        <div className="space-y-2">
+          <Label className="text-xs tracking-wider uppercase text-muted-foreground">Payment method</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {(["stripe", "paypal"] as const).map((provider) => (
+              <button
+                key={provider}
+                type="button"
+                aria-pressed={paymentProvider === provider}
+                onClick={() => setPaymentProvider(provider)}
+                className={cn(
+                  "py-2.5 text-sm font-medium border rounded-sm capitalize transition-colors",
+                  paymentProvider === provider
+                    ? "border-oroko-gold bg-oroko-gold/10 text-oroko-black"
+                    : "border-border text-muted-foreground hover:border-oroko-gold/40"
+                )}
+              >
+                {provider === "paypal" ? "PayPal" : "Card (Stripe)"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={isSubmitting || !selectedTicket}
@@ -184,6 +257,62 @@ export function EventRegistrationForm({ eventId, ticketTypes, defaultName = "", 
         {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Ticket className="size-4" />}
         {isSubmitting ? "Registering…" : "Register Now"}
       </button>
+    </form>
+  );
+}
+
+function StripeTicketPayment({
+  payment,
+  onSuccess,
+}: {
+  payment: { clientSecret: string; registrationId: string; code: string; name: string };
+  onSuccess: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submitPayment(event: React.FormEvent) {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+    setIsProcessing(true);
+    setError(null);
+    const confirmation = await stripe.confirmPayment({ elements, redirect: "if_required" });
+    if (confirmation.error) {
+      setError(confirmation.error.message ?? "Payment failed.");
+      setIsProcessing(false);
+      return;
+    }
+
+    const result = await confirmEventPayment(payment.registrationId);
+    if (!result.success) {
+      setError(result.error ?? "Payment was received but could not be confirmed.");
+      setIsProcessing(false);
+      return;
+    }
+    setIsProcessing(false);
+    onSuccess();
+  }
+
+  return (
+    <form onSubmit={submitPayment} className="space-y-5">
+      <p className="text-sm text-muted-foreground">
+        Completing ticket payment for {payment.name}.
+      </p>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <PaymentElement />
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        className="w-full flex items-center justify-center gap-2 py-3 bg-oroko-gold text-oroko-black text-sm font-bold tracking-wider uppercase hover:bg-oroko-gold-light disabled:opacity-50 transition-colors rounded-sm"
+      >
+        {isProcessing && <Loader2 className="size-4 animate-spin" />}
+        {isProcessing ? "Processing…" : "Pay and confirm ticket"}
+      </button>
+      <p className="text-xs text-center text-muted-foreground">
+        🔒 Secured by Stripe. Card details are not stored by OROKO International.
+      </p>
     </form>
   );
 }

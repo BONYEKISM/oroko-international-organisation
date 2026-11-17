@@ -71,11 +71,19 @@ export async function approveApplication(membershipId: string): Promise<ActionRe
 
     const membership = await Membership.findById(membershipId);
     if (!membership) return { success: false, error: "Application not found" };
+    if (!["paid", "waived"].includes(membership.paymentStatus)) {
+      return { success: false, error: "Annual membership dues must be paid or waived before approval." };
+    }
 
     membership.applicationStatus = "approved";
     membership.status = "active";
     membership.reviewedBy = new Types.ObjectId(admin.id);
     membership.decisionAt = new Date();
+    if (!membership.expiresAt) {
+      const expiry = new Date();
+      expiry.setFullYear(expiry.getFullYear() + 1);
+      membership.expiresAt = expiry;
+    }
     membership.statusHistory.push({
       status: "active",
       changedBy: new Types.ObjectId(admin.id),

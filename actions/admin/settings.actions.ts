@@ -18,6 +18,11 @@ const orgSettingsSchema = z.object({
   notifyOnNewApplication: z.boolean(),
   notifyOnNewDonation: z.boolean(),
   notifyOnWelfareRequest: z.boolean(),
+  membershipDuesAmount: z.number().positive().max(100000).refine(
+    (amount) => Math.abs(amount * 100 - Math.round(amount * 100)) < 1e-7,
+    "Use no more than two decimal places for membership dues."
+  ),
+  membershipDuesCurrency: z.enum(["EUR", "USD", "GBP", "CAD", "AUD"]),
 });
 
 export async function updateOrgSettings(data: unknown): Promise<ActionResult> {

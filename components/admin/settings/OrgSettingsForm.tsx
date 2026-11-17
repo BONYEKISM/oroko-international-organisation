@@ -16,6 +16,8 @@ interface OrgSettingsFormProps {
     notifyOnNewApplication: boolean;
     notifyOnNewDonation: boolean;
     notifyOnWelfareRequest: boolean;
+    membershipDuesAmount: number;
+    membershipDuesCurrency: "EUR" | "USD" | "GBP" | "CAD" | "AUD";
   };
 }
 
@@ -60,6 +62,39 @@ export function OrgSettingsForm({ defaultValues }: OrgSettingsFormProps) {
       <div className="space-y-1.5">
         <Label htmlFor="address">Address</Label>
         <Input id="address" value={values.address} onChange={(e) => setValues((v) => ({ ...v, address: e.target.value }))} />
+      </div>
+
+      <div className="space-y-2 border-t border-border pt-4">
+        <p className="text-sm font-medium text-oroko-black">Annual Membership Dues</p>
+        <p className="text-xs text-muted-foreground">
+          New applicants pay this amount during registration. Existing memberships renew manually.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="membershipDuesAmount">Amount</Label>
+            <Input
+              id="membershipDuesAmount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={values.membershipDuesAmount}
+              onChange={(e) => setValues((v) => ({ ...v, membershipDuesAmount: Number(e.target.value) }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="membershipDuesCurrency">Currency</Label>
+            <select
+              id="membershipDuesCurrency"
+              value={values.membershipDuesCurrency}
+              onChange={(e) => setValues((v) => ({ ...v, membershipDuesCurrency: e.target.value as typeof v.membershipDuesCurrency }))}
+              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            >
+              {["EUR", "USD", "GBP", "CAD", "AUD"].map((currency) => (
+                <option key={currency} value={currency}>{currency}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-2 pt-2">
