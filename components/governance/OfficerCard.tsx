@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ArrowUpRight, Mail, Phone, UserRound } from "lucide-react";
+import "./country-flags.css";
 import type { OfficerProfile } from "@/lib/dal/governance";
 import {
   Dialog,
@@ -35,6 +36,32 @@ function termLabel(officer: OfficerProfile) {
   return `Until ${format(officer.endDate!)}`;
 }
 
+function CountryIdentity({
+  officer,
+  featured = false,
+}: {
+  officer: OfficerProfile;
+  featured?: boolean;
+}) {
+  if (!officer.countryCode || !officer.countryName) return null;
+
+  return (
+    <span
+      className={`council-country group/country inline-flex items-center gap-1.5 font-sans text-[10px] font-medium leading-none tracking-normal transition-transform duration-300 ease-out motion-reduce:transition-none ${
+        featured
+          ? "text-white/60 group-hover/featured:translate-x-0.5 motion-reduce:translate-x-0"
+          : "text-muted-foreground group-hover:translate-x-0.5"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`flag:${officer.countryCode} council-country-flag transition-transform duration-300 ease-out group-hover/country:scale-105 motion-reduce:transition-none motion-reduce:scale-100`}
+      />
+      {officer.countryName}
+    </span>
+  );
+}
+
 function Portrait({
   officer,
   featured,
@@ -52,7 +79,7 @@ function Portrait({
         alt={`${officer.userName}, ${officer.roleName}`}
         fill
         sizes={featured ? "(max-width: 768px) 100vw, 42vw" : "(max-width: 640px) 100vw, 33vw"}
-        className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+        className="object-cover transition-transform duration-700 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:scale-100"
         unoptimized
         onError={() => setFailedPhotoUrl(photoUrl)}
       />
@@ -82,7 +109,7 @@ function OfficerCardContent({
 
   if (featured) {
     return (
-      <div className="grid min-h-100 overflow-hidden rounded-sm border border-oroko-gold/25 bg-oroko-black shadow-[0_24px_70px_-35px_rgba(0,0,0,0.8)] md:grid-cols-[0.9fr_1.1fr]">
+      <div className="group/featured grid min-h-100 overflow-hidden rounded-sm border border-oroko-gold/25 bg-oroko-black shadow-[0_24px_70px_-35px_rgba(0,0,0,0.8)] md:grid-cols-[0.9fr_1.1fr]">
         <div className="group relative min-h-72 overflow-hidden bg-oroko-green">
           <Portrait officer={officer} featured />
           <div className="absolute inset-0 bg-linear-to-t from-oroko-black/50 via-transparent to-transparent" />
@@ -95,9 +122,12 @@ function OfficerCardContent({
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-oroko-gold">
             PRESIDENT – CHIEF EXECUTIVE
           </p>
-          <h2 className="mt-4 font-heading text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-5xl">
-            {officer?.userName ?? (hasUnpublishedOfficer ? "Profile forthcoming" : "To be appointed")}
-          </h2>
+          <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-2">
+            <h2 className="font-heading text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-5xl">
+              {officer?.userName ?? (hasUnpublishedOfficer ? "Profile forthcoming" : "To be appointed")}
+            </h2>
+            {officer && <CountryIdentity officer={officer} featured />}
+          </div>
           {term && <p className="mt-3 text-sm text-white/55">{term}</p>}
           <div className="my-6 h-px w-16 bg-oroko-gold/65" />
           <p className="whitespace-pre-line text-sm leading-7 text-white/70 sm:text-base">
@@ -124,7 +154,7 @@ function OfficerCardContent({
   }
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-sm border border-border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-oroko-gold/35 hover:shadow-[0_18px_40px_-28px_rgba(20,30,20,0.45)]">
+    <div className="group flex h-full flex-col overflow-hidden rounded-sm border border-border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-oroko-gold/35 hover:shadow-[0_18px_40px_-28px_rgba(20,30,20,0.45)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <div className="relative aspect-4/3 overflow-hidden bg-oroko-green">
         <Portrait officer={officer} featured={false} />
         <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-oroko-black/65 to-transparent" />
@@ -136,8 +166,9 @@ function OfficerCardContent({
       </div>
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-oroko-gold">{roleName}</p>
-        <h3 className="mt-2 font-heading text-xl font-semibold leading-snug text-oroko-black">
-          {officer?.userName ?? (hasUnpublishedOfficer ? "Profile forthcoming" : "To be appointed")}
+        <h3 className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-heading text-xl font-semibold leading-snug text-oroko-black">
+          <span>{officer?.userName ?? (hasUnpublishedOfficer ? "Profile forthcoming" : "To be appointed")}</span>
+          {officer && <CountryIdentity officer={officer} />}
         </h3>
         {description && <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{description}</p>}
         {!officer && (
@@ -178,7 +209,10 @@ function OfficerDetails({ officer }: { officer: OfficerProfile }) {
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-oroko-gold">{officer.roleName}</p>
-          <DialogTitle className="mt-2 font-heading text-2xl font-semibold text-oroko-black">{officer.userName}</DialogTitle>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-2">
+            <DialogTitle className="font-heading text-2xl font-semibold text-oroko-black">{officer.userName}</DialogTitle>
+            <CountryIdentity officer={officer} />
+          </div>
           {term && <p className="mt-2 text-sm text-muted-foreground">{term}</p>}
         </div>
       </div>

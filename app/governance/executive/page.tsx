@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowDown, Building2, ShieldCheck } from "lucide-react";
 import { OfficerCard } from "@/components/governance/OfficerCard";
+import { ScrollReveal } from "@/components/governance/ScrollReveal";
 import { getExecutiveCouncil } from "@/lib/dal/governance";
 
 export const dynamic = "force-dynamic";
@@ -85,58 +86,62 @@ export default async function ExecutivePage() {
           </div>
         </section>
 
-        <section aria-labelledby="president-heading" className="mb-16">
-          <div className="mb-5 flex items-center gap-3">
-            <span className="h-px w-8 bg-oroko-gold" />
-            <p id="president-heading" className="text-[10px] font-semibold uppercase tracking-[0.24em] text-oroko-gold">
-              Office of the President
-            </p>
-          </div>
-          <OfficerCard
-            officer={president?.officer}
-            roleName={president?.roleName ?? "PRESIDENT"}
-            responsibilities={president?.responsibilities}
-            description={president?.description}
-            hasUnpublishedOfficer={president?.hasUnpublishedOfficer}
-            featured
-            presidentialMessage={council.presidentMessage}
-          />
-        </section>
+        <ScrollReveal className="mb-16">
+          <section aria-labelledby="president-heading">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="h-px w-8 bg-oroko-gold" />
+              <p id="president-heading" className="text-[10px] font-semibold uppercase tracking-[0.24em] text-oroko-gold">
+                Office of the President
+              </p>
+            </div>
+            <OfficerCard
+              officer={president?.officer}
+              roleName={president?.roleName ?? "PRESIDENT"}
+              responsibilities={president?.responsibilities}
+              description={president?.description}
+              hasUnpublishedOfficer={president?.hasUnpublishedOfficer}
+              featured
+              presidentialMessage={council.presidentMessage}
+            />
+          </section>
+        </ScrollReveal>
 
-        <section aria-labelledby="officers-heading">
-          <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-oroko-gold">The Interim Government</p>
-              <h2 id="officers-heading" className="font-heading text-3xl font-semibold text-oroko-black sm:text-4xl">
-                Council officers
-              </h2>
+        <ScrollReveal>
+          <section aria-labelledby="officers-heading">
+            <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-oroko-gold">The Interim Government</p>
+                <h2 id="officers-heading" className="font-heading text-3xl font-semibold text-oroko-black sm:text-4xl">
+                  Council officers
+                </h2>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-muted-foreground">
+                Select an officer to read their approved profile and portfolio.
+              </p>
             </div>
-            <p className="max-w-md text-sm leading-6 text-muted-foreground">
-              Select an officer to read their approved profile and portfolio.
-            </p>
-          </div>
 
-          {otherPositions.length === 0 ? (
-            <div className="rounded-sm border border-dashed border-border bg-white px-6 py-14 text-center">
-              <Building2 className="mx-auto mb-4 size-8 text-oroko-gold/70" strokeWidth={1.4} />
-              <p className="font-heading text-xl font-semibold text-oroko-black">No additional positions are currently published</p>
-              <p className="mt-2 text-sm text-muted-foreground">Council positions will appear here when made active.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {otherPositions.map((position) => (
-                <OfficerCard
-                  key={position.id}
-                  roleName={position.roleName}
-                  officer={position.officer}
-                  responsibilities={position.responsibilities}
-                  description={position.description}
-                  hasUnpublishedOfficer={position.hasUnpublishedOfficer}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+            {otherPositions.length === 0 ? (
+              <div className="rounded-sm border border-dashed border-border bg-white px-6 py-14 text-center">
+                <Building2 className="mx-auto mb-4 size-8 text-oroko-gold/70" strokeWidth={1.4} />
+                <p className="font-heading text-xl font-semibold text-oroko-black">No additional positions are currently published</p>
+                <p className="mt-2 text-sm text-muted-foreground">Council positions will appear here when made active.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {otherPositions.map((position) => (
+                  <OfficerCard
+                    key={position.id}
+                    roleName={position.roleName}
+                    officer={position.officer}
+                    responsibilities={position.responsibilities}
+                    description={position.description}
+                    hasUnpublishedOfficer={position.hasUnpublishedOfficer}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </ScrollReveal>
       </div>
     </div>
   );

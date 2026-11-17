@@ -10,23 +10,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UploadCloud } from "lucide-react";
+import { CountrySelect } from "@/components/admin/leadership/CountrySelect";
 
 type Props = {
   id: string;
   roleName: string;
   userName: string;
+  countryCode: string;
   term: string;
   bio: string;
   photoUrl: string;
   isPublished: boolean;
 };
 
-export function LeadershipProfileDialog({ id, roleName, userName, term, bio, photoUrl, isPublished }: Props) {
+export function LeadershipProfileDialog({ id, roleName, userName, countryCode, term, bio, photoUrl, isPublished }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [profileTerm, setProfileTerm] = useState(term);
   const [profileBio, setProfileBio] = useState(bio);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(photoUrl);
+  const [profileCountryCode, setProfileCountryCode] = useState(countryCode);
   const [isProfilePublished, setIsProfilePublished] = useState(isPublished);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,6 +41,7 @@ export function LeadershipProfileDialog({ id, roleName, userName, term, bio, pho
       setProfileTerm(term);
       setProfileBio(bio);
       setProfilePhotoUrl(photoUrl);
+      setProfileCountryCode(countryCode);
       setIsProfilePublished(isPublished);
       setError(null);
     }
@@ -52,6 +56,7 @@ export function LeadershipProfileDialog({ id, roleName, userName, term, bio, pho
         term: profileTerm,
         bio: profileBio,
         photoUrl: profilePhotoUrl,
+        countryCode: profileCountryCode,
         isPublished: isProfilePublished,
       });
       if (!result.success) {
@@ -76,6 +81,11 @@ export function LeadershipProfileDialog({ id, roleName, userName, term, bio, pho
           <DialogDescription>Review the content before publishing {userName}&apos;s profile.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSave} className="space-y-3">
+          <CountrySelect
+            id={`officer-country-${id}`}
+            value={profileCountryCode}
+            onChange={setProfileCountryCode}
+          />
           <div className="space-y-1.5">
             <Label htmlFor={`officer-term-${id}`}>Term of office</Label>
             <Input

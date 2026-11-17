@@ -26,7 +26,10 @@ export default async function LeadershipPage() {
       <PageHeader title="Leadership" description="Manage the Interim Government, Executive Council positions and officer profiles." />
 
       <div className="mb-6">
-        <LeadershipForms roles={roles.map((r) => ({ id: r.id, name: r.name, isActive: r.isActive, isPresident: r.isPresident }))} presidentMessage={presidentMessage} />
+        <LeadershipForms
+          roles={roles.map((r) => ({ id: r.id, name: r.name, isActive: r.isActive, isPresident: r.isPresident }))}
+          presidentMessage={presidentMessage}
+        />
       </div>
 
       <section className="mb-8">
@@ -84,6 +87,7 @@ export default async function LeadershipPage() {
           <AdminTableHead>
             <th>Member</th>
             <th>Position</th>
+            <th>Country</th>
             <th>Term</th>
             <th>Publication</th>
             <th>Status</th>
@@ -98,6 +102,7 @@ export default async function LeadershipPage() {
                   {m.isPublicProfile && <p className="text-xs font-medium text-oroko-green">Public page record</p>}
                 </td>
                 <td>{m.roleName}</td>
+                <td>{m.countryName || "Not specified"}</td>
                 <td>{m.term || "Not specified"}</td>
                 <td><StatusBadge status={m.isPublished ? "published" : "draft"} /></td>
                 <td><StatusBadge status={m.isActive ? "active" : "resigned"} /></td>
@@ -107,6 +112,7 @@ export default async function LeadershipPage() {
                       id={m.id}
                       roleName={m.roleName}
                       userName={m.userName}
+                      countryCode={m.countryCode}
                       term={m.term}
                       bio={m.bio}
                       photoUrl={m.photoUrl}

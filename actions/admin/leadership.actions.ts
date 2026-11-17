@@ -12,6 +12,7 @@ import OrgSettings from "@/models/OrgSettings";
 import User from "@/models/User";
 import { PERMISSIONS } from "@/lib/permissions";
 import type { ActionResult } from "@/types";
+import { isValidCountryCode } from "@/lib/countries";
 
 const roleSchema = z.object({
   name: z.string().trim().min(2, "Position title is required").max(100),
@@ -197,9 +198,15 @@ const secureUrl = z.string().url().refine(
   "Use a secure Cloudinary image URL"
 ).optional().or(z.literal(""));
 
+const countryCode = z.string().trim().toUpperCase().refine(
+  isValidCountryCode,
+  "Select a valid country"
+);
+
 const assignSchema = z.object({
   email: z.string().email(),
   roleId: z.string().min(1, "Select a position"),
+  countryCode,
   term: z.string().trim().max(100).optional().or(z.literal("")),
   startDate: optionalDate,
   endDate: optionalDate,
@@ -229,6 +236,7 @@ export async function assignLeadershipPosition(data: unknown): Promise<ActionRes
     const exec = await ExecutiveMember.create({
       user: user._id,
       role: role._id,
+      countryCode: parsed.data.countryCode,
       term: parsed.data.term || undefined,
       startDate: parsed.data.startDate ? new Date(parsed.data.startDate) : undefined,
       endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : undefined,
@@ -258,6 +266,7 @@ export async function assignLeadershipPosition(data: unknown): Promise<ActionRes
 }
 
 const profileSchema = z.object({
+  countryCode,
   term: z.string().trim().max(100).optional().or(z.literal("")),
   bio: z.string().trim().max(2000).optional().or(z.literal("")),
   photoUrl: secureUrl,
@@ -280,6 +289,7 @@ export async function updateLeadershipProfile(id: string, data: unknown): Promis
       return { success: false, error: "Executive officer profile not found" };
     }
 
+    member.countryCode = parsed.data.countryCode;
     member.term = parsed.data.term || undefined;
     member.bio = parsed.data.bio || undefined;
     member.photoUrl = parsed.data.photoUrl || undefined;

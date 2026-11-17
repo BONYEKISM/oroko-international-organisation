@@ -12,6 +12,7 @@ import { Types } from "mongoose";
 import type { IGovernanceRole } from "@/models/GovernanceRole";
 import type { IExecutiveMember } from "@/models/ExecutiveMember";
 import User, { type IUser } from "@/models/User";
+import { getCountryName } from "@/lib/countries";
 
 // ─── Serialized types (plain objects for Server→Client passing) ─────────────
 
@@ -20,6 +21,8 @@ export type OfficerProfile = {
   userId: string;
   userName: string;
   userPhoto?: string;
+  countryCode?: string;
+  countryName?: string;
   email?: string;
   phone?: string;
   website?: string;
@@ -225,6 +228,8 @@ export const getExecutiveCouncil = cache(async (): Promise<ExecutiveCouncil> => 
         userId: user._id.toString(),
         userName: `${user.firstName} ${user.lastName}`,
         userPhoto: memberPhotoUrl || userPhotoUrl,
+        countryCode: member.countryCode,
+        countryName: getCountryName(member.countryCode),
         email: privacySettings?.showEmail ? user.email : undefined,
         phone: privacySettings?.showPhone ? user.phone : undefined,
         website: privacySettings?.isDirectoryVisible ? publicHttpsUrl(user.website) : undefined,

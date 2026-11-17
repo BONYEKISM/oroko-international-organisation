@@ -14,6 +14,7 @@ import {
   createLeadershipRole,
   updateExecutivePresidentMessage,
 } from "@/actions/admin/leadership.actions";
+import { CountrySelect } from "@/components/admin/leadership/CountrySelect";
 
 interface LeadershipFormsProps {
   roles: { id: string; name: string; isActive: boolean; isPresident: boolean }[];
@@ -31,6 +32,7 @@ export function LeadershipForms({ roles, presidentMessage }: LeadershipFormsProp
 
   const [email, setEmail] = useState("");
   const [roleId, setRoleId] = useState(roles.find((role) => role.isActive)?.id ?? "");
+  const [countryCode, setCountryCode] = useState("");
   const [term, setTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -78,6 +80,7 @@ export function LeadershipForms({ roles, presidentMessage }: LeadershipFormsProp
       const result = await assignLeadershipPosition({
         email,
         roleId,
+        countryCode,
         term,
         startDate,
         endDate,
@@ -89,6 +92,7 @@ export function LeadershipForms({ roles, presidentMessage }: LeadershipFormsProp
         return;
       }
       setEmail("");
+      setCountryCode("");
       setTerm("");
       setStartDate("");
       setEndDate("");
@@ -170,6 +174,11 @@ export function LeadershipForms({ roles, presidentMessage }: LeadershipFormsProp
                 {activeRoles.map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            <CountrySelect
+              id="leadership-member-country"
+              value={countryCode}
+              onChange={setCountryCode}
+            />
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1.5">
                 <Label htmlFor="leadership-term">Term of office (optional)</Label>

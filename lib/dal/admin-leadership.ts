@@ -6,6 +6,7 @@ import OrgSettings from "@/models/OrgSettings";
 import User, { type IUser } from "@/models/User";
 import { Types } from "mongoose";
 import { ensureDefaultExecutivePositions } from "@/lib/dal/governance";
+import { getCountryName } from "@/lib/countries";
 
 export async function getLeadershipRoles() {
   await connectDB();
@@ -68,6 +69,8 @@ export async function getLeadershipMembers() {
         userLinkedIn: user.linkedIn ?? "",
         roleId,
         roleName: role.name,
+        countryCode: m.countryCode ?? "",
+        countryName: getCountryName(m.countryCode),
         term: m.term ?? "",
         startDate: m.startDate?.toISOString() ?? "",
         endDate: m.endDate?.toISOString(),

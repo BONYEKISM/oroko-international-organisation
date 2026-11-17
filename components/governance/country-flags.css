@@ -1,0 +1,8 @@
+@import "country-flag-icons/3x2/flags.css";
+
+.council-country-flag {
+  --CountryFlagIcon-height: 0.9rem;
+  flex: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 10%);
+}
