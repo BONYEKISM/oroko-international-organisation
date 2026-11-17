@@ -6,6 +6,7 @@ const STATUS_STYLES: Record<string, string> = {
   approved: "bg-oroko-green/10 text-oroko-green",
   published: "bg-oroko-green/10 text-oroko-green",
   paid: "bg-oroko-green/10 text-oroko-green",
+  waived: "bg-oroko-green/10 text-oroko-green",
   succeeded: "bg-oroko-green/10 text-oroko-green",
   resolved: "bg-oroko-green/10 text-oroko-green",
   confirmed: "bg-oroko-green/10 text-oroko-green",
@@ -13,6 +14,7 @@ const STATUS_STYLES: Record<string, string> = {
   completed: "bg-oroko-green/10 text-oroko-green",
 
   pending: "bg-oroko-gold/15 text-oroko-gold-light text-oroko-black/70",
+  pending_payment: "bg-oroko-gold/15 text-oroko-gold-light text-oroko-black/70",
   under_review: "bg-oroko-gold/15 text-oroko-black/70",
   needs_information: "bg-oroko-gold/15 text-oroko-black/70",
   submitted: "bg-oroko-gold/15 text-oroko-black/70",

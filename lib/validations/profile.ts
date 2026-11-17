@@ -24,6 +24,7 @@ export const profileSchema = z.object({
     .max(100, "Headline cannot exceed 100 characters")
     .optional(),
   country: z.string().optional(),
+  countryOfOrigin: z.string().max(100).optional(),
   city: z.string().max(100).optional(),
   phone: z.string().max(20, "Phone number is too long").optional(),
   occupation: z

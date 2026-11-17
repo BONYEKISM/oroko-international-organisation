@@ -13,9 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { COUNTRIES } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
-type Props = { defaults: ProfileInput };
+type Props = { defaults: ProfileInput; isMembershipApplication?: boolean };
 
-export function ProfileEditForm({ defaults }: Props) {
+export function ProfileEditForm({ defaults, isMembershipApplication = false }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const router = useRouter();
@@ -66,6 +66,11 @@ export function ProfileEditForm({ defaults }: Props) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {isMembershipApplication && (
+        <p className="text-sm text-muted-foreground">
+          Complete your phone, country of residence, city, country of origin, and occupation before your application can be approved.
+        </p>
+      )}
       {serverError && (
         <div className="rounded-sm bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
           {serverError}
@@ -121,6 +126,23 @@ export function ProfileEditForm({ defaults }: Props) {
             <select
               id="country"
               {...register("country")}
+              className="w-full h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring"
+            >
+              <option value="">Select country…</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="countryOfOrigin" className="text-xs tracking-wider uppercase text-muted-foreground">
+              Country of Origin
+            </Label>
+            <select
+              id="countryOfOrigin"
+              {...register("countryOfOrigin")}
               className="w-full h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring"
             >
               <option value="">Select country…</option>

@@ -44,7 +44,7 @@ export default async function MemberProfilePage({ params }: PageProps) {
     <div>
       <PageHeader
         title={`${user.firstName} ${user.lastName}`}
-        description={`${membership.orokoId} · Member since ${new Date(membership.memberSince).toLocaleDateString()}`}
+        description={`${membership.orokoId ?? "ID pending"} · Member since ${new Date(membership.memberSince).toLocaleDateString()}`}
         action={<StatusBadge status={membership.status} />}
       />
 
@@ -78,7 +78,7 @@ export default async function MemberProfilePage({ params }: PageProps) {
             <Card>
               <CardHeader><CardTitle>Membership Information</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <Row label="Member ID" value={membership.orokoId} />
+                <Row label="Member ID" value={membership.orokoId ?? "Pending activation"} />
                 <Row label="Membership Type" value={membership.membershipType} />
                 <Row label="Status" value={membership.status} />
                 <Row label="Payment Status" value={membership.paymentStatus} />

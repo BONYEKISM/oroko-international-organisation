@@ -8,6 +8,7 @@ import { ProfileEditForm } from "@/components/profile/ProfileEditForm";
 import { PhotoUpload } from "@/components/profile/PhotoUpload";
 import { PrivacySettingsForm } from "@/components/profile/PrivacySettingsForm";
 import { CreditCard } from "lucide-react";
+import { getMissingMembershipProfileFields } from "@/lib/membership/application-profile";
 
 export const metadata: Metadata = { title: "My Profile" };
 
@@ -16,6 +17,27 @@ export default async function ProfilePage() {
   if (!data) redirect("/auth/login");
 
   const { user, membership } = data;
+  const hasCompletedDues =
+    membership?.paymentStatus === "paid" || membership?.paymentStatus === "waived";
+  if (
+    membership &&
+    membership.applicationStatus !== "approved" &&
+    !hasCompletedDues
+  ) {
+    redirect("/portal/membership");
+  }
+
+  const missingApplicationFields = membership
+    ? getMissingMembershipProfileFields({
+        phone: user.phone || membership.phone,
+        country: user.country || membership.country,
+        city: user.city || membership.city,
+        countryOfOrigin: membership.countryOfOrigin,
+        profession: user.occupation || membership.profession,
+      })
+    : [];
+  const isMembershipApplication =
+    Boolean(membership) && membership?.applicationStatus !== "approved";
   const initials = `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
 
   // Serialize plain values for Client Components — Mongoose lean docs still
@@ -26,11 +48,12 @@ export default async function ProfilePage() {
     lastName: user.lastName,
     bio: user.bio ?? "",
     headline: user.headline ?? "",
-    country: user.country ?? "",
-    city: user.city ?? "",
-    phone: user.phone ?? "",
-    occupation: user.occupation ?? "",
-    employer: user.employer ?? "",
+    country: user.country || membership?.country || "",
+    countryOfOrigin: membership?.countryOfOrigin ?? "",
+    city: user.city || membership?.city || "",
+    phone: user.phone || membership?.phone || "",
+    occupation: user.occupation || membership?.profession || "",
+    employer: user.employer || membership?.organization || "",
     website: user.website ?? "",
     linkedIn: user.linkedIn ?? "",
   };
@@ -45,6 +68,21 @@ export default async function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {isMembershipApplication && (
+        <div className="rounded-sm border border-oroko-gold/20 bg-oroko-gold/5 px-4 py-3 text-sm">
+          <p className="font-medium text-oroko-black">Complete your membership application</p>
+          {missingApplicationFields.length > 0 ? (
+            <p className="mt-1 text-muted-foreground">
+              Still required: {missingApplicationFields.join(", ")}.
+            </p>
+          ) : (
+            <p className="mt-1 text-muted-foreground">
+              Your profile is complete and ready for admin review. Membership becomes active after approval.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Header card */}
       <ProfileHeader user={user} membership={membership} isOwner />
 
@@ -68,7 +106,10 @@ export default async function ProfilePage() {
 
         <TabsContent value="edit">
           <div className="bg-white border border-border rounded-sm p-6">
-            <ProfileEditForm defaults={profileDefaults} />
+            <ProfileEditForm
+              defaults={profileDefaults}
+              isMembershipApplication={isMembershipApplication}
+            />
           </div>
         </TabsContent>
 

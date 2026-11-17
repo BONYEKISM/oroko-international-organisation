@@ -12,7 +12,7 @@ export default async function IdCardPage() {
 
   const { user, membership } = data;
 
-  if (!membership?.orokoId) {
+  if (!membership?.orokoId || membership.status !== "active") {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
         <p className="font-heading text-2xl text-oroko-black mb-3">ID Card Not Yet Available</p>

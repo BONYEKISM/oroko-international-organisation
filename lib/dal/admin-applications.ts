@@ -11,6 +11,9 @@ export interface ApplicationListItem {
   email: string;
   membershipType: string;
   applicationStatus: string;
+  paymentStatus: string;
+  duesAmount?: number;
+  duesCurrency?: string;
   createdAt: string;
 }
 
@@ -20,7 +23,7 @@ export async function getApplications(filters: { status?: string; page?: number;
 
   const filter: Record<string, unknown> = status
     ? { applicationStatus: status }
-    : { applicationStatus: { $in: ["pending", "under_review", "needs_information"] } };
+    : { applicationStatus: { $in: ["pending_payment", "pending", "under_review", "needs_information"] } };
 
   const skip = (page - 1) * limit;
   const [memberships, total] = await Promise.all([
@@ -44,6 +47,9 @@ export async function getApplications(filters: { status?: string; page?: number;
         email: user.email,
         membershipType: m.membershipType,
         applicationStatus: m.applicationStatus,
+        paymentStatus: m.paymentStatus ?? "unpaid",
+        duesAmount: m.duesAmount,
+        duesCurrency: m.duesCurrency,
         createdAt: m.createdAt.toISOString(),
       };
     });

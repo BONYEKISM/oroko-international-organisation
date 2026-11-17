@@ -16,6 +16,7 @@ interface PageProps {
 
 const STATUS_TABS = [
   { value: "", label: "Needs Attention" },
+  { value: "pending_payment", label: "Pending Payment" },
   { value: "pending", label: "Pending" },
   { value: "under_review", label: "Under Review" },
   { value: "needs_information", label: "Needs Information" },
@@ -58,6 +59,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
             <AdminTableHead>
               <th>Applicant</th>
               <th>Membership Type</th>
+              <th>Payment</th>
               <th>Status</th>
               <th>Submitted</th>
               <th />
@@ -70,6 +72,16 @@ export default async function ApplicationsPage({ searchParams }: PageProps) {
                     <p className="text-xs text-muted-foreground">{a.email}</p>
                   </td>
                   <td className="capitalize">{a.membershipType}</td>
+                  <td>
+                    <div className="flex flex-col items-start gap-1">
+                      <StatusBadge status={a.paymentStatus} />
+                      {a.duesAmount != null && (
+                        <span className="text-xs text-muted-foreground">
+                          {a.duesCurrency ?? "EUR"} {a.duesAmount.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td><StatusBadge status={a.applicationStatus} /></td>
                   <td>{new Date(a.createdAt).toLocaleDateString()}</td>
                   <td className="text-right">

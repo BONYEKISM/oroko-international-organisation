@@ -74,7 +74,7 @@ export async function getMembers(filters: MemberListFilters) {
       const user = m.user as unknown as IUser;
       return {
         id: (user._id as Types.ObjectId).toString(),
-        orokoId: m.orokoId,
+        orokoId: m.orokoId ?? "",
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,

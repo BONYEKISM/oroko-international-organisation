@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   const headers = ["Member ID", "First Name", "Last Name", "Email", "Phone", "Membership Type", "Status", "Country", "Profession", "Member Since"];
   const rows = members.map((m) => [
-    m.orokoId, m.firstName, m.lastName, m.email, m.phone ?? "", m.membershipType, m.status, m.country ?? "", m.profession ?? "",
+    m.orokoId ?? "", m.firstName, m.lastName, m.email, m.phone ?? "", m.membershipType, m.status, m.country ?? "", m.profession ?? "",
     new Date(m.memberSince).toLocaleDateString(),
   ]);
 

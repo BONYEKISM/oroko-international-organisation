@@ -6,6 +6,7 @@ import { getCurrentMember } from "@/lib/dal/profile";
 import { logoutUser } from "@/actions/auth.actions";
 import { User, CreditCard, Users, LogOut, ShieldCheck, AlertCircle } from "lucide-react";
 import { getCountryName } from "@/lib/countries";
+import { getMissingMembershipProfileFields } from "@/lib/membership/application-profile";
 
 export const metadata: Metadata = { title: "Member Portal" };
 
@@ -27,6 +28,20 @@ export default async function PortalPage() {
   const status = (membership?.status ?? "pending") as keyof typeof statusColors;
   const profileComplete =
     !!(user.bio && user.country && user.occupation && user.profilePhoto);
+  const membershipProfileMissing = membership
+    ? getMissingMembershipProfileFields({
+        phone: user.phone || membership.phone,
+        country: user.country || membership.country,
+        city: user.city || membership.city,
+        countryOfOrigin: membership.countryOfOrigin,
+        profession: user.occupation || membership.profession,
+      })
+    : [];
+  const needsApplicationProfile =
+    !!membership &&
+    membership.applicationStatus !== "approved" &&
+    (membership.paymentStatus === "paid" || membership.paymentStatus === "waived") &&
+    membershipProfileMissing.length > 0;
 
   const quickLinks = [
     { href: "/portal/profile", icon: User, label: "Edit Profile", sub: "Update your info and photo" },
@@ -53,20 +68,24 @@ export default async function PortalPage() {
         <p className="text-muted-foreground mt-1 text-sm">{user.email}</p>
       </div>
 
-      {!profileComplete && (
+      {(!profileComplete || needsApplicationProfile) && (
         <div className="flex items-start gap-3 px-4 py-3.5 bg-amber-50 border border-oroko-gold/20 rounded-sm">
           <AlertCircle className="size-4 text-oroko-gold mt-0.5 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-oroko-black">Complete your profile</p>
+            <p className="text-sm font-medium text-oroko-black">
+              {needsApplicationProfile ? "Complete your membership application" : "Complete your profile"}
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Add your bio, country, occupation, and a photo to appear fully in the member directory.
+              {needsApplicationProfile
+                ? `Required before admin review: ${membershipProfileMissing.join(", ")}.`
+                : "Add your bio, country, occupation, and a photo to appear fully in the member directory."}
             </p>
           </div>
           <Link
             href="/portal/profile"
             className="text-xs text-oroko-gold font-semibold hover:text-oroko-gold-light transition-colors whitespace-nowrap"
           >
-            Complete →
+            {needsApplicationProfile ? "Complete application →" : "Complete →"}
           </Link>
         </div>
       )}

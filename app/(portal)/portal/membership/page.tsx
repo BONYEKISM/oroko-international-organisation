@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db";
 import Membership from "@/models/Membership";
 import { getOrgSettings } from "@/lib/dal/org-settings";
 import { MembershipPaymentForm } from "@/components/portal/MembershipPaymentForm";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "Membership Dues" };
 
@@ -35,10 +36,20 @@ export default async function PortalMembershipPage() {
           Annual dues: <span className="font-semibold text-oroko-black">{currency} {amount.toFixed(2)}</span>
         </p>
         {membership.paymentStatus === "paid" || membership.paymentStatus === "waived" ? (
-          <p className="text-sm text-emerald-700">
-            {membership.paymentStatus === "paid" ? "Your annual dues are paid." : "Your dues have been waived."}
-            {membership.applicationStatus !== "approved" && " Your application is awaiting review."}
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-emerald-700">
+              {membership.paymentStatus === "paid" ? "Your annual dues are paid." : "Your dues have been waived."}
+              {membership.applicationStatus !== "approved" && " Complete your profile before admin review."}
+            </p>
+            {membership.applicationStatus !== "approved" && (
+              <Link
+                href="/portal/profile?onboarding=1"
+                className="inline-flex rounded-sm bg-oroko-gold px-5 py-3 text-xs font-bold uppercase tracking-wider text-oroko-black transition-colors hover:bg-oroko-gold-light"
+              >
+                Complete membership profile
+              </Link>
+            )}
+          </div>
         ) : (
           <>
             <p className="text-sm text-muted-foreground">

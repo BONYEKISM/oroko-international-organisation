@@ -71,7 +71,13 @@ export function RegisterForm({
 
   const finishRegistration = () => {
     setSuccess(true);
-    setTimeout(() => router.push("/auth/login?registered=true"), 2200);
+    setTimeout(
+      () =>
+        router.push(
+          `/auth/login?registered=true&callbackUrl=${encodeURIComponent("/portal/profile?onboarding=1")}`
+        ),
+      2200
+    );
   };
 
   if (payment) {
@@ -95,7 +101,10 @@ export function RegisterForm({
       <div className="text-center py-6 space-y-3">
         <CheckCircle className="size-12 text-oroko-gold mx-auto" />
         <p className="text-white font-heading text-xl">Payment Complete</p>
-        <p className="text-white/50 text-sm">Your application is submitted for review. Redirecting you to sign in…</p>
+        <p className="text-white/50 text-sm">
+          Your dues are paid. Sign in to complete your membership profile before admin review.
+          Redirecting you to sign in…
+        </p>
       </div>
     );
   }

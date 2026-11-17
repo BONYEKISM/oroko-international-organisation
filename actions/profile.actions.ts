@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
+import Membership from "@/models/Membership";
 import { Types } from "mongoose";
 import { profileSchema, privacySchema } from "@/lib/validations/profile";
 import type { ActionResult } from "@/types";
@@ -24,10 +25,12 @@ export async function updateProfile(data: unknown): Promise<ActionResult> {
   try {
     const userId = await requireUser();
     await connectDB();
+    const userObjectId = new Types.ObjectId(userId);
+    const { countryOfOrigin, ...userProfile } = parsed.data;
 
     const updated = await User.findByIdAndUpdate(
-      new Types.ObjectId(userId),
-      { $set: parsed.data },
+      userObjectId,
+      { $set: userProfile },
       { new: false, strict: false }
     );
 
@@ -35,8 +38,27 @@ export async function updateProfile(data: unknown): Promise<ActionResult> {
       return { success: false, error: "Member account not found. Please sign out and sign in again." };
     }
 
+    const membership = await Membership.findOneAndUpdate(
+      { user: userObjectId },
+      {
+        $set: {
+          country: userProfile.country ?? "",
+          countryOfOrigin: countryOfOrigin ?? "",
+          city: userProfile.city ?? "",
+          phone: userProfile.phone ?? "",
+          profession: userProfile.occupation ?? "",
+          organization: userProfile.employer ?? "",
+        },
+      },
+      { new: true, select: "_id" }
+    );
+
     revalidatePath("/portal/profile");
     revalidatePath("/portal");
+    if (membership) {
+      revalidatePath("/admin/applications");
+      revalidatePath(`/admin/applications/${membership._id}`);
+    }
     return { success: true };
   } catch (err) {
     console.error("[updateProfile]", err);

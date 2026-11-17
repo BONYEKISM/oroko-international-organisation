@@ -60,7 +60,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
           <ReportTable title="Members by Country of Origin" exportType="members-by-origin" from={from} to={to} columns={["Country", "Members"]} rows={byOrigin.map((r) => [r.country, r.count])} />
           <ReportTable title="Membership Type" exportType="membership-type" from={from} to={to} columns={["Type", "Members"]} rows={byType.map((r) => [r.type, r.count])} />
           <ReportTable title="Membership Status" exportType="membership-status" from={from} to={to} columns={["Status", "Members"]} rows={byStatus.map((r) => [r.status, r.count])} />
-          <ReportTable title="Membership Expiring in 60 Days" exportType="membership-expiration" columns={["Name", "Email", "Member ID", "Expires"]} rows={expiring.map((r) => [r.name, r.email, r.orokoId, new Date(r.expiresAt).toLocaleDateString()])} />
+          <ReportTable title="Membership Expiring in 60 Days" exportType="membership-expiration" columns={["Name", "Email", "Member ID", "Expires"]} rows={expiring.map((r) => [r.name, r.email, r.orokoId ?? "", new Date(r.expiresAt).toLocaleDateString()])} />
         </TabsContent>
 
         <TabsContent value="events" className="mt-4 space-y-8">

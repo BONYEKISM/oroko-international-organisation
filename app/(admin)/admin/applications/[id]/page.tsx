@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ApplicationActions } from "@/components/admin/applications/ApplicationActions";
+import { getCountryName } from "@/lib/countries";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -36,16 +37,20 @@ export default async function ApplicationReviewPage({ params }: PageProps) {
               <Row label="Full Name" value={`${user.firstName} ${user.lastName}`} />
               <Row label="Email" value={user.email} />
               <Row label="Phone" value={membership.phone} />
-              <Row label="Country of Residence" value={membership.country} />
+              <Row label="Country of Residence" value={getCountryName(membership.country)} />
               <Row label="City" value={membership.city} />
-              <Row label="Country of Origin" value={membership.countryOfOrigin} />
+              <Row label="Country of Origin" value={getCountryName(membership.countryOfOrigin)} />
               <Row label="Profession" value={membership.profession} />
               <Row label="Organization" value={membership.organization} />
               <Row label="Membership Type Requested" value={membership.membershipType} />
               <Row
                 label="Annual Dues"
-                value={membership.duesAmount == null ? undefined : `${membership.duesCurrency ?? "EUR"} ${membership.duesAmount.toFixed(2)} · ${membership.paymentStatus}`}
+                value={membership.duesAmount == null ? undefined : `${membership.duesCurrency ?? "EUR"} ${membership.duesAmount.toFixed(2)}`}
               />
+              <Row label="Payment Status" value={membership.paymentStatus} />
+              {membership.paymentProvider && (
+                <Row label="Payment Method" value={membership.paymentProvider} />
+              )}
               <Row label="Submitted" value={new Date(membership.createdAt).toLocaleString()} />
               {membership.infoRequestMessage && (
                 <Row label="Info Requested" value={membership.infoRequestMessage} />

@@ -43,7 +43,7 @@ export async function getMemberByOrokoId(
 ): Promise<PublicMember | null> {
   await connectDB();
   const membership = await Membership.findOne({ orokoId }).lean<IMembership>();
-  if (!membership) return null;
+  if (!hasMemberId(membership) || membership.status !== "active") return null;
 
   const user = await User.findById(membership.user).lean<IUser>();
   if (!user || !user.isActive) return null;
@@ -65,6 +65,7 @@ export async function getMemberDirectory(opts: {
 
   const userFilter: Record<string, unknown> = {
     isActive: true,
+    membershipStatus: "active",
     // $ne:false treats absent field as opt-in (matches true and missing)
     "privacySettings.isDirectoryVisible": { $ne: false },
   };
@@ -95,7 +96,11 @@ export async function getMemberDirectory(opts: {
   ]);
 
   const memberIds = users.map((u) => u._id);
-  const memberships = await Membership.find({ user: { $in: memberIds } })
+  const memberships = await Membership.find({
+    user: { $in: memberIds },
+    status: "active",
+    orokoId: { $exists: true },
+  })
     .select("user orokoId memberSince membershipType status")
     .lean<IMembership[]>();
 
@@ -106,7 +111,7 @@ export async function getMemberDirectory(opts: {
   const members: PublicMember[] = users
     .map((user) => {
       const m = membershipMap.get((user._id as Types.ObjectId).toString());
-      if (!m) return null;
+      if (!hasMemberId(m)) return null;
       return buildPublicProfile(user, m);
     })
     .filter((m): m is PublicMember => m !== null);
@@ -119,7 +124,16 @@ export async function getMemberDirectory(opts: {
   };
 }
 
-function buildPublicProfile(user: IUser, membership: IMembership): PublicMember {
+function hasMemberId(
+  membership: IMembership | null | undefined
+): membership is IMembership & { orokoId: string } {
+  return Boolean(membership?.orokoId);
+}
+
+function buildPublicProfile(
+  user: IUser,
+  membership: IMembership & { orokoId: string }
+): PublicMember {
   const privacy = user.privacySettings ?? {
     showCountry: true,
     showOccupation: true,

@@ -9,6 +9,7 @@ import User from "@/models/User";
 import { requireAdminSession } from "@/lib/admin-auth";
 import { PERMISSIONS } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { getMissingMembershipProfileFields } from "@/lib/membership/application-profile";
 import type { ActionResult } from "@/types";
 
 export async function setApplicationUnderReview(membershipId: string): Promise<ActionResult> {
@@ -73,6 +74,24 @@ export async function approveApplication(membershipId: string): Promise<ActionRe
     if (!membership) return { success: false, error: "Application not found" };
     if (!["paid", "waived"].includes(membership.paymentStatus)) {
       return { success: false, error: "Annual membership dues must be paid or waived before approval." };
+    }
+
+    const user = await User.findById(membership.user)
+      .select("country city phone occupation")
+      .lean();
+    if (!user) return { success: false, error: "Applicant account not found." };
+    const missingProfileFields = getMissingMembershipProfileFields({
+      phone: membership.phone || user.phone,
+      country: membership.country || user.country,
+      city: membership.city || user.city,
+      countryOfOrigin: membership.countryOfOrigin,
+      profession: membership.profession || user.occupation,
+    });
+    if (missingProfileFields.length > 0) {
+      return {
+        success: false,
+        error: `Applicant must complete: ${missingProfileFields.join(", ")}.`,
+      };
     }
 
     membership.applicationStatus = "approved";

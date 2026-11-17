@@ -34,7 +34,7 @@ export interface IInternalNote {
 
 export interface IMembership extends Document {
   user: Types.ObjectId;
-  orokoId: string;
+  orokoId?: string;
   memberSince: Date;
   // Free-form so new membership types can be added from Settings (see models/MembershipType.ts)
   membershipType: string;
@@ -170,9 +170,9 @@ const MembershipSchema = new Schema<IMembership>(
   }
 );
 
-/** Generate OROKO-YYYY-NNNNN ID on pre-save */
+/** Generate OROKO-YYYY-NNNNN ID on activation */
 MembershipSchema.pre("save", async function () {
-  if (this.isNew && !this.orokoId) {
+  if (!this.orokoId && this.status === "active") {
     const year = new Date().getFullYear();
     const count = await mongoose.models.Membership.countDocuments();
     const sequence = String(count + 1).padStart(5, "0");
