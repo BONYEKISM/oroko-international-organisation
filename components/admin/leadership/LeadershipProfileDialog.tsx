@@ -18,15 +18,19 @@ type Props = {
   userName: string;
   countryCode: string;
   term: string;
+  startDate: string;
+  endDate: string;
   bio: string;
   photoUrl: string;
   isPublished: boolean;
 };
 
-export function LeadershipProfileDialog({ id, roleName, userName, countryCode, term, bio, photoUrl, isPublished }: Props) {
+export function LeadershipProfileDialog({ id, roleName, userName, countryCode, term, startDate, endDate, bio, photoUrl, isPublished }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [profileTerm, setProfileTerm] = useState(term);
+  const [profileStartDate, setProfileStartDate] = useState(startDate);
+  const [profileEndDate, setProfileEndDate] = useState(endDate);
   const [profileBio, setProfileBio] = useState(bio);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(photoUrl);
   const [profileCountryCode, setProfileCountryCode] = useState(countryCode);
@@ -39,6 +43,8 @@ export function LeadershipProfileDialog({ id, roleName, userName, countryCode, t
     setOpen(nextOpen);
     if (nextOpen) {
       setProfileTerm(term);
+      setProfileStartDate(startDate);
+      setProfileEndDate(endDate);
       setProfileBio(bio);
       setProfilePhotoUrl(photoUrl);
       setProfileCountryCode(countryCode);
@@ -54,6 +60,8 @@ export function LeadershipProfileDialog({ id, roleName, userName, countryCode, t
     try {
       const result = await updateLeadershipProfile(id, {
         term: profileTerm,
+        startDate: profileStartDate,
+        endDate: profileEndDate,
         bio: profileBio,
         photoUrl: profilePhotoUrl,
         countryCode: profileCountryCode,
@@ -95,6 +103,26 @@ export function LeadershipProfileDialog({ id, roleName, userName, countryCode, t
               maxLength={100}
               placeholder="e.g. 2 years"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={`officer-start-date-${id}`}>Mandate start date</Label>
+              <Input
+                id={`officer-start-date-${id}`}
+                type="date"
+                value={profileStartDate}
+                onChange={(e) => setProfileStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`officer-end-date-${id}`}>Mandate end date</Label>
+              <Input
+                id={`officer-end-date-${id}`}
+                type="date"
+                value={profileEndDate}
+                onChange={(e) => setProfileEndDate(e.target.value)}
+              />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`officer-photo-${id}`}>Portrait URL</Label>

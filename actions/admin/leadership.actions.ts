@@ -268,10 +268,15 @@ export async function assignLeadershipPosition(data: unknown): Promise<ActionRes
 const profileSchema = z.object({
   countryCode,
   term: z.string().trim().max(100).optional().or(z.literal("")),
+  startDate: optionalDate,
+  endDate: optionalDate,
   bio: z.string().trim().max(2000).optional().or(z.literal("")),
   photoUrl: secureUrl,
   isPublished: z.boolean(),
-});
+}).refine(
+  (value) => !value.startDate || !value.endDate || Date.parse(value.endDate) >= Date.parse(value.startDate),
+  { message: "End date must be on or after the start date", path: ["endDate"] }
+);
 
 export async function updateLeadershipProfile(id: string, data: unknown): Promise<ActionResult> {
   const parsed = profileSchema.safeParse(data);
@@ -291,6 +296,8 @@ export async function updateLeadershipProfile(id: string, data: unknown): Promis
 
     member.countryCode = parsed.data.countryCode;
     member.term = parsed.data.term || undefined;
+    member.startDate = parsed.data.startDate ? new Date(parsed.data.startDate) : undefined;
+    member.endDate = parsed.data.endDate ? new Date(parsed.data.endDate) : undefined;
     member.bio = parsed.data.bio || undefined;
     member.photoUrl = parsed.data.photoUrl || undefined;
     member.isPublished = parsed.data.isPublished;

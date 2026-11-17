@@ -24,16 +24,21 @@ type Props = {
 };
 
 function termLabel(officer: OfficerProfile) {
-  if (officer.term) return `Term: ${officer.term}`;
-  if (!officer.startDate && !officer.endDate) return undefined;
+  let dateRange: string | undefined;
   const format = (value: string) =>
     new Intl.DateTimeFormat("en", { year: "numeric", month: "short", timeZone: "UTC" })
       .format(new Date(value));
   if (officer.startDate && officer.endDate) {
-    return `${format(officer.startDate)} – ${format(officer.endDate)}`;
+    dateRange = `${format(officer.startDate)} – ${format(officer.endDate)}`;
+  } else if (officer.startDate) {
+    dateRange = `Since ${format(officer.startDate)}`;
+  } else if (officer.endDate) {
+    dateRange = `Until ${format(officer.endDate)}`;
   }
-  if (officer.startDate) return `Since ${format(officer.startDate)}`;
-  return `Until ${format(officer.endDate!)}`;
+
+  if (officer.term && dateRange) return `Term: ${officer.term} · ${dateRange}`;
+  if (officer.term) return `Term: ${officer.term}`;
+  return dateRange;
 }
 
 function CountryIdentity({

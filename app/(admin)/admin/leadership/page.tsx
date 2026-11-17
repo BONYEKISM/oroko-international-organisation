@@ -88,7 +88,7 @@ export default async function LeadershipPage() {
             <th>Member</th>
             <th>Position</th>
             <th>Country</th>
-            <th>Term</th>
+            <th>Term / dates</th>
             <th>Publication</th>
             <th>Status</th>
             <th />
@@ -103,7 +103,18 @@ export default async function LeadershipPage() {
                 </td>
                 <td>{m.roleName}</td>
                 <td>{m.countryName || "Not specified"}</td>
-                <td>{m.term || "Not specified"}</td>
+                <td>
+                  <p>{m.term || "Not specified"}</p>
+                  {(m.startDate || m.endDate) && (
+                    <p className="text-xs text-muted-foreground">
+                      {m.startDate && m.endDate
+                        ? `${m.startDate} – ${m.endDate}`
+                        : m.startDate
+                          ? `From ${m.startDate}`
+                          : `Until ${m.endDate}`}
+                    </p>
+                  )}
+                </td>
                 <td><StatusBadge status={m.isPublished ? "published" : "draft"} /></td>
                 <td><StatusBadge status={m.isActive ? "active" : "resigned"} /></td>
                 <td className="text-right">
@@ -114,6 +125,8 @@ export default async function LeadershipPage() {
                       userName={m.userName}
                       countryCode={m.countryCode}
                       term={m.term}
+                      startDate={m.startDate}
+                      endDate={m.endDate}
                       bio={m.bio}
                       photoUrl={m.photoUrl}
                       isPublished={m.isPublished}
