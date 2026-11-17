@@ -83,7 +83,13 @@ export default async function ApplicationReviewPage({ params }: PageProps) {
         <Card>
           <CardHeader><CardTitle>Review Decision</CardTitle></CardHeader>
           <CardContent>
-            <ApplicationActions membershipId={membership._id.toString()} applicationStatus={membership.applicationStatus} />
+            <ApplicationActions
+              membershipId={membership._id.toString()}
+              userId={user._id.toString()}
+              userName={`${user.firstName} ${user.lastName}`}
+              applicationStatus={membership.applicationStatus}
+              canDelete={hasPermission(session?.user.role, PERMISSIONS.MEMBERS_MANAGE)}
+            />
           </CardContent>
         </Card>
       </div>

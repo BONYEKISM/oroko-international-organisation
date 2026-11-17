@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { DeleteMemberButton } from "@/components/admin/members/DeleteMemberButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,10 +19,11 @@ import { changeMemberStatus, renewMembership } from "@/actions/admin/members.act
 
 interface MemberActionsPanelProps {
   memberId: string;
+  memberName: string;
   status: string;
 }
 
-export function MemberActionsPanel({ memberId, status }: MemberActionsPanelProps) {
+export function MemberActionsPanel({ memberId, memberName, status }: MemberActionsPanelProps) {
   const router = useRouter();
   const [renewOpen, setRenewOpen] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
@@ -82,6 +84,11 @@ export function MemberActionsPanel({ memberId, status }: MemberActionsPanelProps
       <Button type="button" size="sm" variant="outline" onClick={() => setRenewOpen(true)}>
         Renew Membership
       </Button>
+      <DeleteMemberButton
+        memberId={memberId}
+        memberName={memberName}
+        returnTo="/admin/members"
+      />
 
       <Dialog open={renewOpen} onOpenChange={setRenewOpen}>
         <DialogContent>

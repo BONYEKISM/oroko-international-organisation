@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { DeleteMemberButton } from "@/components/admin/members/DeleteMemberButton";
 import {
   setApplicationUnderReview,
   requestMoreInformation,
@@ -18,10 +19,19 @@ import {
 
 interface ApplicationActionsProps {
   membershipId: string;
+  userId: string;
+  userName: string;
   applicationStatus: string;
+  canDelete: boolean;
 }
 
-export function ApplicationActions({ membershipId, applicationStatus }: ApplicationActionsProps) {
+export function ApplicationActions({
+  membershipId,
+  userId,
+  userName,
+  applicationStatus,
+  canDelete,
+}: ApplicationActionsProps) {
   const router = useRouter();
   const [infoOpen, setInfoOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -71,6 +81,13 @@ export function ApplicationActions({ membershipId, applicationStatus }: Applicat
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
+        {canDelete && (
+          <DeleteMemberButton
+            memberId={userId}
+            memberName={userName}
+            returnTo="/admin/applications"
+          />
+        )}
         {applicationStatus === "pending" && (
           <ConfirmButton
             label="Mark Under Review"

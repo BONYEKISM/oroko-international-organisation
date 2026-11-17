@@ -49,7 +49,11 @@ export default async function MemberProfilePage({ params }: PageProps) {
       />
 
       <div className="mb-6">
-        <MemberActionsPanel memberId={id} status={membership.status} />
+        <MemberActionsPanel
+          memberId={id}
+          memberName={`${user.firstName} ${user.lastName}`}
+          status={membership.status}
+        />
       </div>
 
       <Tabs defaultValue="overview">

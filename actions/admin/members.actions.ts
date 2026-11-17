@@ -1,13 +1,28 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import User from "@/models/User";
 import Membership from "@/models/Membership";
+import Donation from "@/models/Donation";
+import Event from "@/models/Event";
+import EventRegistration from "@/models/EventRegistration";
+import CommitteeMember from "@/models/CommitteeMember";
+import ExecutiveMember from "@/models/ExecutiveMember";
+import WelfareRequest from "@/models/WelfareRequest";
+import ContactMessage from "@/models/ContactMessage";
+import Announcement from "@/models/Announcement";
+import NewsFlash from "@/models/NewsFlash";
+import AuditLog from "@/models/AuditLog";
 import { requireAdminSession } from "@/lib/admin-auth";
 import { PERMISSIONS } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
+import { stripe } from "@/lib/stripe";
+import {
+  cancelPayPalSubscription,
+  getPayPalSubscription,
+} from "@/lib/payments/paypal";
 import { z } from "zod";
 import type { ActionResult } from "@/types";
 
@@ -245,6 +260,246 @@ export async function createMember(data: unknown): Promise<ActionResult & { id?:
   }
 }
 
+export async function deleteMemberAccount(memberId: string): Promise<ActionResult> {
+  if (!Types.ObjectId.isValid(memberId)) {
+    return { success: false, error: "Invalid member account." };
+  }
+
+  let cancelledSubscriptions = 0;
+  try {
+    const admin = await requireAdminSession(PERMISSIONS.MEMBERS_MANAGE);
+    await connectDB();
+
+    const userId = new Types.ObjectId(memberId);
+    const user = await User.findById(userId).select("firstName lastName email role");
+    if (!user || user.role !== "member") {
+      return { success: false, error: "Member account not found." };
+    }
+
+    const donationFilter = {
+      $or: [{ userId }, { donorEmail: user.email }],
+    };
+    const donations = await Donation.find(donationFilter).select(
+      "+stripeSubscriptionId +paypalSubscriptionId"
+    );
+    for (const donation of donations) {
+      if (donation.frequency === "once") continue;
+
+      if (donation.paymentProvider === "stripe" && donation.stripeSubscriptionId) {
+        const subscription = await stripe.subscriptions.retrieve(
+          donation.stripeSubscriptionId
+        );
+        if (!["canceled", "incomplete_expired"].includes(subscription.status)) {
+          await stripe.subscriptions.cancel(donation.stripeSubscriptionId);
+          cancelledSubscriptions += 1;
+        }
+      } else if (donation.paymentProvider === "paypal" && donation.paypalSubscriptionId) {
+        const subscription = await getPayPalSubscription(
+          donation.paypalSubscriptionId
+        );
+        if (!["CANCELLED", "EXPIRED"].includes(subscription.status)) {
+          await cancelPayPalSubscription(donation.paypalSubscriptionId);
+          cancelledSubscriptions += 1;
+        }
+      } else if (donation.status === "active") {
+        return {
+          success: false,
+          error: `${cancelledSubscriptions > 0 ? "Some recurring donations were cancelled. " : ""}An active recurring donation has no matching provider subscription ID. Cancel it with the payment provider before deleting this account.`,
+        };
+      }
+    }
+
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const currentUser = await User.findById(userId).session(session);
+        if (!currentUser || currentUser.role !== "member") {
+          throw new Error("Member account not found or is no longer deletable.");
+        }
+
+        const email = currentUser.email;
+        const fullName = `${currentUser.firstName} ${currentUser.lastName}`;
+        const emailPattern = new RegExp(escapeRegExp(email), "i");
+        const committeeAdditionPattern = new RegExp(
+          `^Added ${escapeRegExp(fullName)} to committee as `,
+          "i"
+        );
+        const linkedRegistrationFilter = {
+          $or: [{ user: userId }, { attendeeEmail: email }],
+        };
+        const linkedWelfareFilter = { member: userId };
+        const linkedContactFilter = { email };
+
+        const linkedMemberships = await Membership.find({ user: userId })
+          .select("_id")
+          .session(session)
+          .lean();
+        const linkedDonations = await Donation.find(donationFilter)
+          .select("_id")
+          .session(session)
+          .lean();
+        const linkedRegistrations = await EventRegistration.find(
+          linkedRegistrationFilter
+        )
+          .select("_id event ticketTypeId quantity status")
+          .session(session)
+          .lean();
+        const linkedWelfareRequests = await WelfareRequest.find(linkedWelfareFilter)
+          .select("_id")
+          .session(session)
+          .lean();
+        const linkedCommitteeRoles = await CommitteeMember.find({ user: userId })
+          .select("_id")
+          .session(session)
+          .lean();
+        const linkedExecutiveRoles = await ExecutiveMember.find({ user: userId })
+          .select("_id")
+          .session(session)
+          .lean();
+        const linkedAnnouncements = await Announcement.find({ author: userId })
+          .select("_id")
+          .session(session)
+          .lean();
+        const linkedNewsFlashes = await NewsFlash.find({ author: userId })
+          .select("_id")
+          .session(session)
+          .lean();
+        const linkedIds = [
+          userId.toString(),
+          ...linkedMemberships,
+          ...linkedDonations,
+          ...linkedRegistrations,
+          ...linkedWelfareRequests,
+          ...linkedCommitteeRoles,
+          ...linkedExecutiveRoles,
+          ...linkedAnnouncements,
+          ...linkedNewsFlashes,
+        ].map((record) =>
+          typeof record === "string" ? record : record._id.toString()
+        );
+
+        await AuditLog.deleteMany(
+          {
+            $or: [
+              { actor: userId },
+              { entityId: { $in: linkedIds } },
+              {
+                action: "committee.member_added",
+                description: { $regex: committeeAdditionPattern },
+              },
+              { description: { $regex: emailPattern } },
+              { "metadata.userId": { $in: [userId, memberId] } },
+              { "metadata.memberId": { $in: [userId, memberId] } },
+              { "metadata.email": email },
+            ],
+          },
+          { session }
+        );
+        await Membership.deleteMany({ user: userId }, { session });
+        await Membership.updateMany(
+          { user: { $ne: userId }, reviewedBy: userId },
+          { $unset: { reviewedBy: 1 } },
+          { session }
+        );
+        await Membership.updateMany(
+          {
+            user: { $ne: userId },
+            $or: [
+              { "statusHistory.changedBy": userId },
+              { "internalNotes.author": userId },
+            ],
+          },
+          {
+            $pull: {
+              statusHistory: { changedBy: userId },
+              internalNotes: { author: userId },
+            },
+          },
+          { session }
+        );
+        await Donation.deleteMany(donationFilter, { session });
+        for (const registration of linkedRegistrations) {
+          if (registration.status === "cancelled") continue;
+          await Event.updateOne(
+            { _id: registration.event },
+            {
+              $inc: {
+                attendeeCount: -registration.quantity,
+                "ticketTypes.$[ticket].sold": -registration.quantity,
+              },
+            },
+            {
+              arrayFilters: [
+                { "ticket._id": new Types.ObjectId(registration.ticketTypeId) },
+              ],
+              session,
+            }
+          );
+        }
+        await EventRegistration.deleteMany(linkedRegistrationFilter, { session });
+        await CommitteeMember.deleteMany({ user: userId }, { session });
+        await ExecutiveMember.deleteMany({ user: userId }, { session });
+        await WelfareRequest.deleteMany(linkedWelfareFilter, { session });
+        await WelfareRequest.updateMany(
+          { member: { $ne: userId }, reviewer: userId },
+          { $unset: { reviewer: 1 } },
+          { session }
+        );
+        await WelfareRequest.updateMany(
+          { member: { $ne: userId }, "internalNotes.author": userId },
+          { $pull: { internalNotes: { author: userId } } },
+          { session }
+        );
+        await ContactMessage.deleteMany(linkedContactFilter, { session });
+        await ContactMessage.updateMany(
+          { "internalNotes.author": userId },
+          { $pull: { internalNotes: { author: userId } } },
+          { session }
+        );
+        await Announcement.deleteMany({ author: userId }, { session });
+        await NewsFlash.deleteMany({ author: userId }, { session });
+
+        const deletion = await User.deleteOne(
+          { _id: userId, role: "member" },
+          { session }
+        );
+        if (deletion.deletedCount !== 1) {
+          throw new Error("Member account could not be deleted.");
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    await logAudit({
+      actorId: admin.id,
+      actorName: admin.name,
+      action: "member.deleted",
+      entityType: "User",
+      description: "Permanently deleted a member account and linked app data.",
+      metadata: { cancelledSubscriptions },
+    });
+
+    revalidatePath("/admin/members");
+    revalidatePath("/admin/applications");
+    revalidatePath("/admin/member-ids");
+    revalidatePath("/admin/reports");
+    revalidatePath("/admin");
+    revalidatePath("/members");
+    return { success: true };
+  } catch (error) {
+    console.error("[deleteMemberAccount]", error);
+    const detail =
+      error instanceof Error ? error.message : "The member account could not be deleted.";
+    return {
+      success: false,
+      error: cancelledSubscriptions > 0
+        ? `${cancelledSubscriptions} recurring donation(s) were cancelled, but the account data was not deleted. Retry deletion. ${detail}`
+        : detail,
+    };
+  }
+}
+
 export async function reissueMemberId(memberId: string): Promise<ActionResult & { orokoId?: string }> {
   try {
     const admin = await requireAdminSession(PERMISSIONS.MEMBERS_MANAGE);
@@ -275,5 +530,9 @@ export async function reissueMemberId(memberId: string): Promise<ActionResult & 
     console.error("[reissueMemberId]", err);
     return { success: false, error: err instanceof Error ? err.message : "Failed to reissue Member ID" };
   }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 

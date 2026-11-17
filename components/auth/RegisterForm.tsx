@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -51,22 +51,29 @@ export function RegisterForm({
 
   const onSubmit = async (data: RegisterInput) => {
     setServerError(null);
-    const result = await registerUser({ ...data, paymentProvider });
+    try {
+      const result = await registerUser({ ...data, paymentProvider });
+      if (!result.success) {
+        setServerError(result.error ?? "Registration failed");
+        return;
+      }
 
-    if (!result.success) {
-      setServerError(result.error ?? "Registration failed");
-      return;
+      if (result.approvalUrl) {
+        window.location.assign(result.approvalUrl);
+        return;
+      }
+      if (result.clientSecret && result.membershipId) {
+        setPayment({ clientSecret: result.clientSecret, membershipId: result.membershipId });
+        return;
+      }
+      setServerError("Your account was created, but checkout could not be started. Sign in to retry.");
+    } catch (error) {
+      setServerError(
+        error instanceof Error
+          ? error.message
+          : "Could not start registration. If your account was created, sign in to retry payment."
+      );
     }
-
-    if (result.approvalUrl) {
-      window.location.assign(result.approvalUrl);
-      return;
-    }
-    if (result.clientSecret && result.membershipId) {
-      setPayment({ clientSecret: result.clientSecret, membershipId: result.membershipId });
-      return;
-    }
-    setServerError("Your account was created, but checkout could not be started. Sign in to retry.");
   };
 
   const finishRegistration = () => {
@@ -190,6 +197,9 @@ export function RegisterForm({
             </button>
           ))}
         </div>
+        <p className="text-white/40 text-xs">
+          Select a payment method, complete the form, then continue to checkout below.
+        </p>
       </div>
 
       {/* Email */}
@@ -285,7 +295,7 @@ export function RegisterForm({
         className="w-full flex items-center justify-center gap-2.5 py-3 bg-oroko-gold text-oroko-black text-xs tracking-[0.2em] uppercase font-bold hover:bg-oroko-gold-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-200 rounded-sm"
       >
         {isSubmitting && <Loader2 className="size-4 animate-spin" />}
-        {isSubmitting ? "Creating account…" : "Create Account"}
+        {isSubmitting ? "Creating account…" : "Create account & continue to checkout"}
       </button>
     </form>
   );
@@ -307,25 +317,53 @@ function StripeMembershipPayment({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let active = true;
+    stripePromise.then(
+      (loadedStripe) => {
+        if (active && !loadedStripe) {
+          setError("Stripe checkout could not initialize. Check the Stripe publishable key.");
+        }
+      },
+      (loadError: unknown) => {
+        console.error("[RegisterForm] Stripe failed to load", loadError);
+        if (active) setError("Stripe checkout failed to load. Try PayPal or reload the page.");
+      }
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
   async function submitPayment(event: React.FormEvent) {
     event.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      setError("Stripe checkout is still loading. Please wait and try again.");
+      return;
+    }
     setIsProcessing(true);
     setError(null);
-    const confirmation = await stripe.confirmPayment({ elements, redirect: "if_required" });
-    if (confirmation.error) {
-      setError(confirmation.error.message ?? "Payment failed.");
+    try {
+      const confirmation = await stripe.confirmPayment({ elements, redirect: "if_required" });
+      if (confirmation.error) {
+        setError(confirmation.error.message ?? "Payment failed.");
+        return;
+      }
+      const result = await confirmMembershipPayment(membershipId);
+      if (!result.success) {
+        setError(result.error ?? "Payment was received but could not be confirmed.");
+        return;
+      }
+      onSuccess();
+    } catch (paymentError) {
+      setError(
+        paymentError instanceof Error
+          ? paymentError.message
+          : "Could not complete the Stripe payment. Please try again."
+      );
+    } finally {
       setIsProcessing(false);
-      return;
     }
-    const result = await confirmMembershipPayment(membershipId);
-    if (!result.success) {
-      setError(result.error ?? "Payment was received but could not be confirmed.");
-      setIsProcessing(false);
-      return;
-    }
-    setIsProcessing(false);
-    onSuccess();
   }
 
   return (
