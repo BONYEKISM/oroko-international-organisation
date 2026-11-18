@@ -1,12 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import {
-  CldUploadWidget,
-  CldImage,
-  type CloudinaryUploadWidgetError,
-  type CloudinaryUploadWidgetResults,
-} from "next-cloudinary";
+import { useState, type ChangeEvent } from "react";
+import { CldImage } from "next-cloudinary";
 import { Camera, Loader2, CheckCircle, X } from "lucide-react";
 import Image from "next/image";
 import { updateProfilePhoto } from "@/actions/profile.actions";
@@ -28,28 +23,51 @@ export function PhotoUpload({ currentPhoto, userName, initials }: Props) {
 
   const displayPhoto = pendingUrl ?? savedPhoto;
 
-  const handleUploadSuccess = (result: CloudinaryUploadWidgetResults) => {
-    const info = result.info;
-    if (
-      typeof info === "object" &&
-      info !== null &&
-      typeof info.secure_url === "string"
-    ) {
-      setPendingUrl(info.secure_url);
-      setPhotoError(null);
+  const uploadPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      setPhotoError("Choose a JPG or PNG image.");
+      return;
+    }
+    if (file.size > 5_000_000) {
+      setPhotoError("Photo must be 5 MB or smaller.");
       return;
     }
 
-    setPhotoError("The upload did not return a photo URL. Please try again.");
-  };
+    setPhotoError(null);
+    setSaving(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("upload_preset", "oroko_profiles");
 
-  const handleUploadError = (error: CloudinaryUploadWidgetError) => {
-    console.error("[PhotoUpload] Cloudinary upload failed", error);
-    const detail =
-      typeof error === "string" ? error : error?.statusText;
-    setPhotoError(
-      detail ? `Photo upload failed: ${detail}` : "Photo upload failed. Please try again."
-    );
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        { method: "POST", body }
+      );
+      const result = (await response.json()) as {
+        secure_url?: unknown;
+        error?: { message?: string };
+      };
+      if (!response.ok) {
+        throw new Error(result.error?.message ?? "Cloudinary rejected the upload.");
+      }
+      if (typeof result.secure_url !== "string") {
+        throw new Error("Cloudinary did not return a secure photo URL.");
+      }
+
+      setPendingUrl(result.secure_url);
+    } catch (error) {
+      console.error("[PhotoUpload] Cloudinary upload failed", error);
+      setPhotoError(
+        error instanceof Error ? error.message : "Photo upload failed. Please try again."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const savePhoto = async () => {
@@ -187,32 +205,29 @@ export function PhotoUpload({ currentPhoto, userName, initials }: Props) {
             </p>
           )}
 
-          <CldUploadWidget
-            uploadPreset="oroko_profiles"
-            options={{
-              maxFiles: 1,
-              resourceType: "image",
-              cropping: true,
-              clientAllowedFormats: ["jpg", "jpeg", "png"],
-              maxFileSize: 5_000_000,
-            }}
-            onSuccess={handleUploadSuccess}
-            onError={handleUploadError}
+          <label
+            htmlFor="profile-photo-file"
+            className={`flex items-center gap-2 px-4 py-2 border border-border text-xs tracking-wider uppercase text-muted-foreground transition-colors rounded-sm ${
+              saving
+                ? "opacity-50 cursor-not-allowed"
+                : "cursor-pointer hover:text-oroko-black hover:border-oroko-black/30"
+            }`}
           >
-            {({ open }) => (
-              <button
-                type="button"
-                onClick={() => {
-                  setPhotoError(null);
-                  open();
-                }}
-                className="flex items-center gap-2 px-4 py-2 border border-border text-xs tracking-wider uppercase text-muted-foreground hover:text-oroko-black hover:border-oroko-black/30 transition-colors rounded-sm"
-              >
-                <Camera className="size-3.5" />
-                {savedPhoto ? "Change Photo" : "Upload Photo"}
-              </button>
+            {saving ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Camera className="size-3.5" />
             )}
-          </CldUploadWidget>
+            {saving ? "Uploading…" : savedPhoto ? "Change Photo" : "Upload Photo"}
+          </label>
+          <input
+            id="profile-photo-file"
+            type="file"
+            accept="image/jpeg,image/png"
+            className="sr-only"
+            disabled={saving}
+            onChange={uploadPhoto}
+          />
 
           <p className="text-xs text-muted-foreground">JPG or PNG · Max 5 MB</p>
         </>
