@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getApplicationOrigin } from "@/lib/payments/origin";
 import {
   completePayPalOrder,
   completePayPalSubscription,
@@ -15,14 +14,9 @@ const returnSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  let origin: string;
-  try {
-    origin = getApplicationOrigin();
-  } catch (error) {
-    console.error("[payment return] Invalid application origin", error);
-    return NextResponse.json({ error: "Payment return URL is not configured." }, { status: 500 });
-  }
-  if (request.headers.get("origin") !== origin) {
+  const requestOrigin = new URL(request.url).origin;
+  const browserOrigin = request.headers.get("origin");
+  if (!browserOrigin || browserOrigin !== requestOrigin) {
     return NextResponse.json({ error: "Invalid payment return origin." }, { status: 403 });
   }
 
