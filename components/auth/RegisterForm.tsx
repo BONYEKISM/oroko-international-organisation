@@ -316,18 +316,25 @@ function StripeMembershipPayment({
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentElementStatus, setPaymentElementStatus] = useState<
+    "loading" | "ready" | "failed"
+  >("loading");
 
   useEffect(() => {
     let active = true;
     stripePromise.then(
       (loadedStripe) => {
         if (active && !loadedStripe) {
+          setPaymentElementStatus("failed");
           setError("Stripe checkout could not initialize. Check the Stripe publishable key.");
         }
       },
       (loadError: unknown) => {
         console.error("[RegisterForm] Stripe failed to load", loadError);
-        if (active) setError("Stripe checkout failed to load. Try PayPal or reload the page.");
+        if (active) {
+          setPaymentElementStatus("failed");
+          setError("Stripe checkout failed to load. Try signing in and selecting PayPal.");
+        }
       }
     );
     return () => {
@@ -335,9 +342,18 @@ function StripeMembershipPayment({
     };
   }, []);
 
+  useEffect(() => {
+    if (!stripe || !elements || paymentElementStatus !== "loading") return;
+    const timeout = window.setTimeout(() => {
+      setPaymentElementStatus("failed");
+      setError("Stripe payment fields are taking too long to load. Sign in and try PayPal.");
+    }, 15_000);
+    return () => window.clearTimeout(timeout);
+  }, [elements, paymentElementStatus, stripe]);
+
   async function submitPayment(event: React.FormEvent) {
     event.preventDefault();
-    if (!stripe || !elements) {
+    if (!stripe || !elements || paymentElementStatus !== "ready") {
       setError("Stripe checkout is still loading. Please wait and try again.");
       return;
     }
@@ -372,14 +388,39 @@ function StripeMembershipPayment({
         Complete your annual membership payment of {currency} {amount.toFixed(2)}.
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <PaymentElement />
+      {error && paymentElementStatus === "failed" && (
+        <Link
+          href="/auth/login?callbackUrl=%2Fportal%2Fmembership"
+          className="block text-sm text-oroko-gold underline underline-offset-4"
+        >
+          Sign in to retry payment with another method
+        </Link>
+      )}
+      <PaymentElement
+        onReady={() => {
+          setPaymentElementStatus("ready");
+          setError(null);
+        }}
+        onLoadError={(event) => {
+          console.error("[RegisterForm] Stripe payment fields failed to load", event.error);
+          setPaymentElementStatus("failed");
+          setError(
+            event.error.message ??
+              "Stripe payment fields failed to load. Sign in and try PayPal."
+          );
+        }}
+      />
       <button
         type="submit"
-        disabled={!stripe || isProcessing}
+        disabled={!stripe || !elements || paymentElementStatus !== "ready" || isProcessing}
         className="w-full flex items-center justify-center gap-2 py-3 bg-oroko-gold text-oroko-black text-xs tracking-[0.2em] uppercase font-bold hover:bg-oroko-gold-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-200 rounded-sm"
       >
         {isProcessing && <Loader2 className="size-4 animate-spin" />}
-        {isProcessing ? "Processing…" : "Pay annual dues"}
+        {isProcessing
+          ? "Processing…"
+          : paymentElementStatus === "loading"
+            ? "Loading secure payment…"
+            : "Pay annual dues"}
       </button>
       <p className="text-xs text-center text-white/40">
         Secured by Stripe. Card details are not stored by OROKO International.

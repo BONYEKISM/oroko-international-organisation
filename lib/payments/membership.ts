@@ -58,6 +58,7 @@ export async function beginMembershipCheckout(
     const paymentIntent = await stripe.paymentIntents.create({
       amount: formatAmountForStripe(membership.duesAmount, membership.duesCurrency ?? "EUR"),
       currency: (membership.duesCurrency ?? "EUR").toLowerCase(),
+      automatic_payment_methods: { enabled: true },
       receipt_email: user.email,
       metadata: {
         paymentType: "membership",
