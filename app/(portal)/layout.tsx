@@ -18,7 +18,7 @@ export default async function PortalLayout({
 
   return (
     <>
-      <Navbar />
+      <Navbar initialSession={session} />
       <PortalNav />
       <main className="flex-1 bg-background min-h-screen">
         <div className="pt-4 pb-16">{children}</div>

@@ -6,6 +6,7 @@ import { X, Heart } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { logoutUser } from "@/actions/auth.actions";
 import type { NavLink } from "@/types";
 
 type MobileNavProps = {
@@ -125,19 +126,29 @@ export function MobileNav({
           {authLoading ? (
             <div className="h-12" aria-hidden="true" />
           ) : account ? (
-            <Link
-              href={account.href}
-              onClick={onClose}
-              className="flex items-center justify-center gap-3 rounded-sm border border-white/20 px-4 py-3 text-sm text-white/80 hover:text-white hover:border-white/40 transition-colors duration-200"
-            >
-              <Avatar>
-                {account.image && <AvatarImage src={account.image} alt="" />}
-                <AvatarFallback className="bg-oroko-gold text-oroko-black text-[10px] font-bold">
-                  {account.initials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="max-w-48 truncate">{account.name}</span>
-            </Link>
+            <>
+              <Link
+                href={account.href}
+                onClick={onClose}
+                className="flex items-center justify-center gap-3 rounded-sm border border-white/20 px-4 py-3 text-sm text-white/80 hover:text-white hover:border-white/40 transition-colors duration-200"
+              >
+                <Avatar>
+                  {account.image && <AvatarImage src={account.image} alt="" />}
+                  <AvatarFallback className="bg-oroko-gold text-oroko-black text-[10px] font-bold">
+                    {account.initials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="max-w-48 truncate">{account.name}</span>
+              </Link>
+              <form action={logoutUser}>
+                <button
+                  type="submit"
+                  className="block w-full text-center text-xs tracking-[0.15em] uppercase font-medium text-white/50 hover:text-white transition-colors duration-200"
+                >
+                  Sign Out
+                </button>
+              </form>
+            </>
           ) : (
             <>
               <Link

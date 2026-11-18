@@ -31,7 +31,7 @@ export const proxy = auth(function proxyHandler(req) {
   if (isAuthPage && isAuthenticated) {
     const destination = isAdminRole(req.auth?.user?.role)
       ? "/admin"
-      : "/portal/profile";
+      : "/portal";
     return NextResponse.redirect(`${base}${destination}`);
   }
 });
