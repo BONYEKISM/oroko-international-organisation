@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import { authConfig } from "@/auth.config";
+import { isAdminRole } from "@/lib/permissions";
 import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
@@ -28,7 +29,10 @@ export const proxy = auth(function proxyHandler(req) {
   }
 
   if (isAuthPage && isAuthenticated) {
-    return NextResponse.redirect(`${base}/portal`);
+    const destination = isAdminRole(req.auth?.user?.role)
+      ? "/admin"
+      : "/portal/profile";
+    return NextResponse.redirect(`${base}${destination}`);
   }
 });
 

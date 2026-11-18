@@ -282,12 +282,12 @@ export async function loginUser(
     const host = fwdHost ?? headersList.get("host") ?? "localhost:3000";
     const proto = host.includes("localhost") ? "http" : "https";
 
-    // No explicit destination requested (e.g. visiting /auth/login directly) — route admins to the dashboard
+    // No explicit destination requested — route admins to admin and members to their profile.
     let destination = callbackUrl;
     if (!destination) {
       await connectDB();
       const account = await User.findOne({ email: email.toLowerCase() }).select("role");
-      destination = account && isAdminRole(account.role) ? "/admin" : "/portal";
+      destination = account && isAdminRole(account.role) ? "/admin" : "/portal/profile";
     }
 
     const redirectTo = `${proto}://${host}${destination}`;
