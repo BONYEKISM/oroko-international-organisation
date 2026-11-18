@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CldUploadWidget, CldImage } from "next-cloudinary";
+import {
+  CldUploadWidget,
+  CldImage,
+  type CloudinaryUploadWidgetError,
+  type CloudinaryUploadWidgetResults,
+} from "next-cloudinary";
 import { Camera, Loader2, CheckCircle, X } from "lucide-react";
 import Image from "next/image";
 import { updateProfilePhoto } from "@/actions/profile.actions";
@@ -18,37 +23,64 @@ export function PhotoUpload({ currentPhoto, userName, initials }: Props) {
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 
   const displayPhoto = pendingUrl ?? savedPhoto;
 
-  // Called by CldUploadWidget — extract URL from whichever result shape arrives
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleUploadSuccess = (result: any) => {
-    const info = result?.info ?? result;
-    const url: string | undefined =
-      typeof info === "object" ? info?.secure_url : undefined;
-    if (url) setPendingUrl(url);
+  const handleUploadSuccess = (result: CloudinaryUploadWidgetResults) => {
+    const info = result.info;
+    if (
+      typeof info === "object" &&
+      info !== null &&
+      typeof info.secure_url === "string"
+    ) {
+      setPendingUrl(info.secure_url);
+      setPhotoError(null);
+      return;
+    }
+
+    setPhotoError("The upload did not return a photo URL. Please try again.");
+  };
+
+  const handleUploadError = (error: CloudinaryUploadWidgetError) => {
+    console.error("[PhotoUpload] Cloudinary upload failed", error);
+    const detail =
+      typeof error === "string" ? error : error?.statusText;
+    setPhotoError(
+      detail ? `Photo upload failed: ${detail}` : "Photo upload failed. Please try again."
+    );
   };
 
   const savePhoto = async () => {
     if (!pendingUrl) return;
     setSaving(true);
-    setSaveError(null);
-    const res = await updateProfilePhoto(pendingUrl);
-    setSaving(false);
-    if (res.success) {
+    setPhotoError(null);
+    try {
+      const res = await updateProfilePhoto(pendingUrl);
+      if (!res.success) {
+        setPhotoError(res.error ?? "Failed to save photo.");
+        return;
+      }
+
       setSavedPhoto(pendingUrl);
       setPendingUrl(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } else {
-      setSaveError(res.error ?? "Failed to save photo");
+    } catch (error) {
+      console.error("[PhotoUpload] Failed to save profile photo", error);
+      setPhotoError(
+        error instanceof Error ? error.message : "Failed to save photo. Please try again."
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
-  const discardPending = () => setPendingUrl(null);
+  const discardPending = () => {
+    setPendingUrl(null);
+    setPhotoError(null);
+  };
 
   if (!cloudName) {
     return (
@@ -114,8 +146,10 @@ export function PhotoUpload({ currentPhoto, userName, initials }: Props) {
           <p className="text-xs text-muted-foreground text-center">
             New photo ready — save to keep it.
           </p>
-          {saveError && (
-            <p className="text-xs text-destructive text-center">{saveError}</p>
+          {photoError && (
+            <p className="text-xs text-destructive text-center" role="alert">
+              {photoError}
+            </p>
           )}
           <div className="flex gap-2 w-full">
             <button
@@ -147,16 +181,31 @@ export function PhotoUpload({ currentPhoto, userName, initials }: Props) {
               <CheckCircle className="size-4" /> Photo saved
             </span>
           )}
+          {photoError && (
+            <p className="max-w-xs text-center text-xs text-destructive" role="alert">
+              {photoError}
+            </p>
+          )}
 
           <CldUploadWidget
             uploadPreset="oroko_profiles"
-            options={{ maxFiles: 1, resourceType: "image", cropping: true }}
+            options={{
+              maxFiles: 1,
+              resourceType: "image",
+              cropping: true,
+              clientAllowedFormats: ["jpg", "jpeg", "png"],
+              maxFileSize: 5_000_000,
+            }}
             onSuccess={handleUploadSuccess}
+            onError={handleUploadError}
           >
             {({ open }) => (
               <button
                 type="button"
-                onClick={() => open()}
+                onClick={() => {
+                  setPhotoError(null);
+                  open();
+                }}
                 className="flex items-center gap-2 px-4 py-2 border border-border text-xs tracking-wider uppercase text-muted-foreground hover:text-oroko-black hover:border-oroko-black/30 transition-colors rounded-sm"
               >
                 <Camera className="size-3.5" />
