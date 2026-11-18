@@ -17,6 +17,7 @@ export const authConfig: NextAuthConfig = {
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.picture = user.image;
         token.role = (user as { role?: string }).role;
         token.membershipStatus = (user as { membershipStatus?: string })
           .membershipStatus;
@@ -26,6 +27,7 @@ export const authConfig: NextAuthConfig = {
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.image = token.picture ?? null;
         session.user.role = (token.role ?? "member") as import("@/types").UserRole;
         session.user.membershipStatus = (token.membershipStatus ?? "pending") as import("@/types").MembershipStatus;
       }

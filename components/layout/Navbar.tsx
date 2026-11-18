@@ -4,10 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { Logo } from "@/components/common/Logo";
 import { MobileNav } from "./MobileNav";
 import { useScrolled } from "@/hooks/useScrolled";
 import { cn } from "@/lib/utils";
+import { isAdminRole } from "@/lib/permissions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { NavLink } from "@/types";
 
 const navLinks: NavLink[] = [
@@ -24,6 +27,17 @@ export function Navbar({ forceSolid = false }: { forceSolid?: boolean }) {
   const scrolled = useScrolled(40);
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: session, status } = useSession();
+  const user = session?.user;
+  const accountName = user?.name?.trim() || user?.email || "Member";
+  const accountInitials = accountName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase();
+  const accountHref = isAdminRole(user?.role) ? "/admin" : "/portal/profile";
+  const isSessionLoading = status === "loading";
 
   // Transparent hero navbar only on the homepage; everywhere else show solid immediately
   const isHomepage = pathname === "/";
@@ -83,18 +97,39 @@ export function Navbar({ forceSolid = false }: { forceSolid?: boolean }) {
             >
               Donate
             </Link>
-            <Link
-              href="/auth/login"
-              className="text-xs tracking-[0.15em] uppercase font-medium text-white/70 hover:text-white transition-colors duration-200"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/auth/register"
-              className="text-xs tracking-[0.15em] uppercase font-semibold px-5 py-2.5 bg-oroko-gold text-oroko-black hover:bg-oroko-gold-light transition-colors duration-200 rounded-sm"
-            >
-              Join Us
-            </Link>
+            {isSessionLoading ? (
+              <span className="h-8 w-24" aria-hidden="true" />
+            ) : user ? (
+              <Link
+                href={accountHref}
+                aria-label={`Open ${accountName}'s account`}
+                title={accountName}
+                className="flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white transition-colors duration-200"
+              >
+                <Avatar>
+                  {user.image && <AvatarImage src={user.image} alt="" />}
+                  <AvatarFallback className="bg-oroko-gold text-oroko-black text-[10px] font-bold">
+                    {accountInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="max-w-28 truncate">{accountName}</span>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="text-xs tracking-[0.15em] uppercase font-medium text-white/70 hover:text-white transition-colors duration-200"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/auth/register"
+                  className="text-xs tracking-[0.15em] uppercase font-semibold px-5 py-2.5 bg-oroko-gold text-oroko-black hover:bg-oroko-gold-light transition-colors duration-200 rounded-sm"
+                >
+                  Join Us
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -112,6 +147,17 @@ export function Navbar({ forceSolid = false }: { forceSolid?: boolean }) {
         links={navLinks}
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        account={
+          user
+            ? {
+                name: accountName,
+                image: user.image,
+                href: accountHref,
+                initials: accountInitials,
+              }
+            : null
+        }
+        authLoading={isSessionLoading}
       />
     </>
   );

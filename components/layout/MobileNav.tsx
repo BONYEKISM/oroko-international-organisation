@@ -5,15 +5,29 @@ import { usePathname } from "next/navigation";
 import { X, Heart } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { NavLink } from "@/types";
 
 type MobileNavProps = {
   links: NavLink[];
   open: boolean;
   onClose: () => void;
+  account: {
+    name: string;
+    image?: string | null;
+    href: string;
+    initials: string;
+  } | null;
+  authLoading: boolean;
 };
 
-export function MobileNav({ links, open, onClose }: MobileNavProps) {
+export function MobileNav({
+  links,
+  open,
+  onClose,
+  account,
+  authLoading,
+}: MobileNavProps) {
   const pathname = usePathname();
 
   return (
@@ -108,20 +122,40 @@ export function MobileNav({ links, open, onClose }: MobileNavProps) {
             <Heart className="size-3.5" />
             Donate Now
           </Link>
-          <Link
-            href="/auth/register"
-            onClick={onClose}
-            className="block text-center text-xs tracking-[0.15em] uppercase font-medium px-5 py-3 border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors duration-200 rounded-sm"
-          >
-            Join Us
-          </Link>
-          <Link
-            href="/auth/login"
-            onClick={onClose}
-            className="block text-center text-xs tracking-[0.15em] uppercase font-medium text-white/50 hover:text-white transition-colors duration-200"
-          >
-            Sign In
-          </Link>
+          {authLoading ? (
+            <div className="h-12" aria-hidden="true" />
+          ) : account ? (
+            <Link
+              href={account.href}
+              onClick={onClose}
+              className="flex items-center justify-center gap-3 rounded-sm border border-white/20 px-4 py-3 text-sm text-white/80 hover:text-white hover:border-white/40 transition-colors duration-200"
+            >
+              <Avatar>
+                {account.image && <AvatarImage src={account.image} alt="" />}
+                <AvatarFallback className="bg-oroko-gold text-oroko-black text-[10px] font-bold">
+                  {account.initials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="max-w-48 truncate">{account.name}</span>
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/auth/register"
+                onClick={onClose}
+                className="block text-center text-xs tracking-[0.15em] uppercase font-medium px-5 py-3 border border-white/20 text-white/70 hover:text-white hover:border-white/40 transition-colors duration-200 rounded-sm"
+              >
+                Join Us
+              </Link>
+              <Link
+                href="/auth/login"
+                onClick={onClose}
+                className="block text-center text-xs tracking-[0.15em] uppercase font-medium text-white/50 hover:text-white transition-colors duration-200"
+              >
+                Sign In
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </>
